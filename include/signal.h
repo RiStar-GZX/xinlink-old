@@ -5,14 +5,14 @@
 #include <malloc.h>
 #include<stdio.h>
 #include<stdlib.h>
-
 #define SIGNAL_NAME_LENGTH 64
 
 typedef  int (*FUNC)(sig_op_t sig_op);
 
 typedef struct XLsignal_par {       //信号参数结构体
         str name[PAR_NAME_LENGTH];          //参数名
-        par_data_t data;                 //参数数据
+        uint8_t * data;                 //参数数据
+        uint32_t datasize;
         struct XLsignal_par * next;     //下一个参数
 } XLsignal_par;
 
@@ -31,10 +31,12 @@ typedef struct XLsignal {           //信号
 } XLsignal;
 
 typedef struct XLsig_pak{
-    XLnet net;
-    str  name[SIGNAL_NAME_LENGTH];
+    str name[SIGNAL_NAME_LENGTH];
     struct XLsignal_par * signal_par_h;
+    dev_op_t op;
+    //struct XLnet net;
 }XLsig_pak;
+
 
 XLsignal * signal_get(sig_op_t op);     //获得信号的结构体
 sig_op_t signal_create(void);           //创建信号
@@ -55,5 +57,9 @@ int8_t signal_set_slot(sig_op_t sig_op,FUNC slot);          //设置信号槽
 int8_t signal_slot(sig_op_t sig_op);                        //启动信号槽
 par_data_t * signal_get_par(sig_op_t sig_op,str * name);
 int8_t sigpar_set_data(sig_op_t sig_op,str * name,par_data_t * data);
+
+int8_t pak_del_par(XLsig_pak *  pak,str * name);
+int8_t pak_add_par(XLsig_pak * pak,str * name);
+int8_t pak_set_data(XLsig_pak * pak,str * name,uint8_t * data,uint32_t size);
 #endif // SIGNAL_H
 

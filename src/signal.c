@@ -263,7 +263,7 @@ int8_t sigpar_set_data(sig_op_t sig_op,str * name,par_data_t * data)
             sigpar_now=sigpar_now->next;
         }
         if(strcmp(sigpar_now->name,name)==0){
-            sigpar_now->data=*data;
+            sigpar_now->data=data;
         }
         else return -1;
     }
@@ -309,3 +309,80 @@ int8_t signal_set_slot(sig_op_t sig_op,FUNC slot)
     }
     return -1;
 }
+
+
+int8_t pak_add_par(XLsig_pak * pak,str * name) {			//添加信号参数（信号操作点，参数名）
+
+        if(pak->signal_par_h!=NULL) {							//信号有参数
+                XLsignal_par * par_now=pak->signal_par_h;
+                for(;;) {
+                        if(name==par_now->name)return -1;
+                        else if(par_now->next!=NULL)par_now=par_now->next;
+                        else {
+                                XLsignal_par * par_new=malloc(sizeof(XLsignal_par));
+                                par_new->next=NULL;
+                                strcpy(par_new->name,name);
+                                par_now->next=par_new;
+                                return 1;
+                        }
+                }
+        } else {													//信号没参数
+                XLsignal_par * par_new=malloc(sizeof(XLsignal_par));	//接入参数表头
+                par_new->next=NULL;
+                strcpy(par_new->name,name);
+                pak->signal_par_h=par_new;
+                return 1;
+        }
+}
+
+int8_t pak_del_par(XLsig_pak *  pak,str * name) {			//删除信号函数（信号操作点，信号名）
+        if(pak->signal_par_h!=NULL) {
+                XLsignal_par * par_now=pak->signal_par_h;
+                XLsignal_par * par_now_front=NULL;
+                for(;;) {
+                        if(strcmp(name,par_now->name)==0) {						//名字一样
+                                if(par_now==pak->signal_par_h) {							//位于表头
+                                        if(par_now->next==NULL) {							//无下一个
+                                                free(par_now);
+                                                return 1;
+                                        } else {											//有下一个
+                                                pak->signal_par_h=par_now->next;				//下一个设为表头
+                                                free(par_now);
+                                                return 1;
+                                        }
+                                } else if(par_now->next==NULL) {						//不是头且没有下一个
+                                        par_now_front->next=NULL;							//前一个的下一个指空
+                                        free(par_now);
+                                        return 1;
+                                } else {												//不是头但有下一个
+                                        par_now_front->next=par_now->next;					//前后相连
+                                        free(par_now);
+                                        return 1;
+                                }
+                        } else if(par_now->next!=NULL) {							//
+                                par_now_front=par_now;
+                                par_now=par_now->next;
+                        } else return -1;
+
+                }
+        } else return -1;
+}
+
+int8_t pak_set_data(XLsig_pak * pak,str * name,uint8_t * data,uint32_t size)
+{
+    XLsignal_par * par_now=pak->signal_par_h;
+    if(par_now!=NULL)
+    {
+        while(par_now!=NULL&&strcmp(par_now->name,name)!=0)
+        {
+            par_now=par_now->next;
+        }
+        if(strcmp(par_now->name,name)==0){
+            par_now->data=data;
+            par_now->datasize=size;
+        }
+        else return -1;
+    }
+    return -1;
+}
+

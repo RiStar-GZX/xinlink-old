@@ -320,6 +320,45 @@ void netdev_list(void) {
         }
 }
 
+netdev_op_t netdev_get_byname(str * name)
+{
+    extern XLnetdev * netdev_head;
+    if(netdev_head!=NULL)
+    {
+        XLnetdev * netdev_now=netdev_head;
+        for(;;)
+        {
+            if(strcmp(name,netdev_now->name)==0)return netdev_now->op;
+            else if(netdev_now->next_op!=NULL) netdev_now=netdev_now->next_op;
+            else return -1;
+        }
+    }else{
+        return -1;
+    }
+}
+
+int8_t netdev_set_name(netdev_op_t netdev_op,str * name)
+{
+    XLnetdev * netdev=netdev_get(netdev_op);
+    if(netdev_get_byname(name)<=0)
+    {
+        return -1;
+    }else{
+        strcpy(netdev->name,name);
+        return 1;
+    }
+}
+
+
+int8_t netdev_set_net(netdev_op_t op,ip ip,uint16_t port,uint8_t family)
+{
+    XLnetdev * netdev=netdev_get(op);
+    if(netdev==NULL)return -1;
+    netdev->net.ip=ip;
+    netdev->net.family=family;
+    netdev->net.port=port;
+    return 1;
+}
 /*relate*/
 int8_t relate_set(op_t dev1,dev_type_t type1,op_t dev2,dev_type_t type2,mod_t hard,mod_t soft)
 {
