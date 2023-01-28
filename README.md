@@ -1,2 +1,2 @@
 # xinlink
-An universal IoT device scheduling system
+一个万能的物联网通信程序
