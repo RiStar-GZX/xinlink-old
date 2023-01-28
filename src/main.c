@@ -22,18 +22,11 @@ int my_slot(sig_id_t sig_id,XLsig_pak * pak)
         data1=pak_get_data(pak,"x",&datasize1);
         uint32_t datasize2,* data2=NULL;
         data2=pak_get_data(pak,"y",&datasize2);
-        uint32_t datasize3;uint8_t * data3=NULL;
-        data3=pak_get_data(pak,"click",&datasize3);
         char s[50];
         sprintf(s,"xdotool mousemove %d %d\n",*data1,*data2);
         system(s);
         system("clear");
         return 1;
-}
-
-void judge(int a,str * s)
-{
-    if(a<=0)printf("%s error\n",s);
 }
 
 int main() {
