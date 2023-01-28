@@ -1,9 +1,9 @@
 /**
  * Copyright (C), 2022-2023, github.com/RiStar-GZX.
- * File name: main.c     // 文件名
+ * File name: main.c     
  * Author:Ristar-GZX  Version:V0.0.1    Date:2023.1.28
  * Description:
- *
+ *      这个示例程序是在linux下通过xdotool来控制鼠标移动，这里是控制端
  */
 #include <stdio.h>
 #include <unistd.h>
