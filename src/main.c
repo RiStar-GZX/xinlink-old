@@ -1,7 +1,7 @@
 /**
- * Copyright (C), 2022-2023, github.com/Ristar-GZX.
+ * Cidyright (C), 2022-2023, github.com/RiStar-GZX.
  * File name: main.c     // 文件名
- * Author:Ristar-GZX  Version:V0.0.1    Date:2023.1.5 // 作者、版本及完成日期
+ * Author:Ristar-GZX  Version:V0.0.1    Date:2023.1.5 
  * Description:    // 用于详细说明此程序文件完成的主要功能，与其他模块
                    // 或函数的接口，输出值、取值范围、含义及参数间的控
                    // 制、顺序、独立或依赖等关系
@@ -15,108 +15,47 @@
        Modification:
  */
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <linux/input.h>
+#include <fcntl.h>
 #include <xinlink.h>
 #define num 10
 
 
-int my_sig_slot(sig_op_t sig_op)
+int my_slot(sig_id_t sig_id,XLsig_pak * pak)
 {
-    //printf("114514%d",sig_op);
-    par_data_t * size;
-    size=signal_get_par(sig_op,"size");
-    printf("this is signal slot!\nsignal_name is:%s\npar(size):%d",signal_get_name(sig_op),*size);
-    return 0;
+        //printf("\n\n\nThis is sig solt!\n\n\n");
+        uint32_t datasize1,* data1=NULL;
+        data1=pak_get_data(pak,"x",&datasize1);
+        uint32_t datasize2,* data2=NULL;
+        data2=pak_get_data(pak,"y",&datasize2);
+        uint32_t datasize3;uint8_t * data3=NULL;
+        data3=pak_get_data(pak,"click",&datasize3);
+        char s[50];
+        sprintf(s,"xdotool mousemove %d %d\n",*data1,*data2);
+        system(s);
+        system("clear");
+        printf("\n\n\n%d\n\n\n",*data3);
+        /*if(data3>=10)sprintf(s,"xdotool mouseup %d %d\n",*data3-10);
+        else sprintf(s,"xdotool mousedown %d %d\n",*data3);
+        system(s);*/
+        return 1;
+}
+
+void judge(int a,str * s)
+{
+    if(a<=0)printf("%s error\n",s);
 }
 
 int main() {
-    /*
-        //设备创建操作测试
-       int i,op[num];
-        for(i=0; i<=num-1; i++) {
-                op[i]=netdev_create();
-
-        }
-        while(1) {
-                int s=0;
-                printf("\ndelete:");
-                scanf("%d",&s);
-                if(s==0)netdev_create();
-                else netdev_del(s);
-                netdev_list();
-        }
-*/
-
-/*
-        dev_op_t dev_op;
-        sig_op_t sig_op;
-        dev_op=device_create();
-        sig_op=signal_create();
-        //if(signal_set_dev(sig_op,dev_op)>0)
-        if(device_init(dev_op,"test_device",DEVICE_TYPE_SN)>=0) {
-                printf("sig_set OK!\n");
-        } else printf("sig_set error!\n");
-*/
-    /*int dev=device_create();
-        int sig=signal_create();
-        device_set_name(dev,"dev1");
-        signal_set_dev(sig,dev);
-        signal_set_name(sig,"test");
-
-        signal_set_slot(sig,my_sig_slot);
-
-        signal_set_name(sig,"test114514");
-        signal_slot(sig);
-        //signal_get(sig)->fun(sig);
-        //signal_set_slot(sig,signal_slot);
-        //signal_send(sig);
-        //signal_trigger(dev,"test");  
-    */
-//------------------------------------------------------------//
-    /*test2  */
-    /*for(int i=1;i<=10;i++)
-    {
-        device_create();
-        netdev_create();
-    }
-    //dev_op_t n=0;
-    while (1) {
-        int s;
-        printf("add(1),relate(2),show(3):");
-        scanf("%d",&s);
-        if(s==1)
-        {
-            int b;
-            printf("lo(1),net(2):");
-            scanf("%d",&b);
-            if(b==1)device_create();
-            if(b==2)netdev_create();
-            //n++;
-        }else if(s==2)
-        {
-            int dev1,type1,dev2,type2,hard,soft;
-            printf("dev1,type1,dev2,type2,hard,soft:");
-            scanf("%d %d %d %d %d %d",&dev1,&type1,&dev2,&type2,&hard,&soft);
-            if(relate_set(dev1,type1,dev2,type2,hard,soft)<=0)printf("relate_set error!\n");
-        }
-        else if(s==3)
-        {
-            relate_list();
-        }
-    }*/
-//------------------------------------------------------------//
-
-
-    dev_op_t dev1=device_create();
-    sig_op_t sig1=signal_create();
-    device_set_name(dev1,"dev1");
-    signal_set_name(sig1,"sig1");
-    signal_set_dev(sig1,dev1);
-    signal_add_par(sig1,"size");
-    par_data_t a=549654;
-    sigpar_set_data(sig1,"size",&a);
-    signal_set_slot(sig1,my_sig_slot);
-    //signal_send(dev1,"sig1");
-    signal_slot(sig1);
+    dev_id_t dev=dev_create("device");
+    sig_id_t sig=sig_create("signal");
+    dev_set_sig(dev,sig);
+    sig_set_slot(sig,my_slot);
+    net_init();
+    while (1);
     return 0;
 }
 

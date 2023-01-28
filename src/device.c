@@ -1,5 +1,5 @@
 /**
- * Copyright (C), 2022-2023, github.com/Ristar-GZX.
+ * Cidyright (C), 2022-2023, github.com/Ristar-GZX.
  * File name: device.c
  * Author:Ristar-GZX  Version:V0.0.1    Date:2023.1.5
  * Description:
@@ -13,64 +13,81 @@
 */
 #include<device.h>
 
-XLdevice * device_head=NULL;//&root.device_head;
+XLdev * dev_head=NULL;//&root.dev_head;
 XLnetdev * netdev_head=NULL;//&root.netdev_head;
 XLrelate * relate_head=NULL;
 
 
-/*device*/
-XLdevice * device_get(dev_op_t dev_op) {
-        extern XLdevice * device_head;
-        XLdevice * device_now=device_head;
-        for(;;) {
-                if(device_now->op==dev_op)
-                        return device_now;
+/*name*/
 
-                else if(device_now->next_op!=NULL)
-                        device_now=device_now->next_op;
+int8_t name_legality(str * name)
+{
+    //if(strcpy(name,"")==0){printf("legality");return 0;}
+    return 1;
+}
+
+/*dev*/
+XLdev * dev_get(dev_id_t dev_id) {
+        extern XLdev * dev_head;
+        XLdev * dev_now=dev_head;
+        for(;;) {
+                if(dev_now->id==dev_id)
+                        return dev_now;
+
+                else if(dev_now->next_id!=NULL)
+                        dev_now=dev_now->next_id;
                 else return NULL;
         }
 }
 
-dev_op_t device_create(void) {
-        XLdevice * device_new=malloc(sizeof(XLdevice));
-        extern XLdevice * device_head;
-
-        if(device_head==NULL) {
-                device_head=device_new;
-                device_new->op=1;
-                device_new->next_op=NULL;
-                return device_new->op;
-        } else if(device_head->op>1) {
-                device_new->op=1;
-                XLdevice * temp;
-                temp=device_head;
-                device_head=device_new;
-                device_new->next_op=temp;
-                return device_new->op;
+dev_id_t dev_create(str * name) {
+        if(name_legality(name)<=0)return 0; //名字合法性判断
+        if(dev_get_byname(name)!=0)         //判断是否有重名设备
+        {
+            printf("same name!\n");
+            return 0;
+        }
+        XLdev * dev_new=malloc(sizeof(XLdev));
+        memset(dev_new,0,sizeof(XLdev));
+        extern XLdev * dev_head;
+        /****************/
+        if(dev_head==NULL) {
+                dev_head=dev_new;
+                dev_new->id=1;
+                dev_new->next_id=NULL;
+                strcpy(dev_new->name,name);
+                return dev_new->id;
+        } else if(dev_head->id>1) {
+                dev_new->id=1;
+                XLdev * temp;
+                temp=dev_head;
+                dev_head=dev_new;
+                dev_new->next_id=temp;
+                strcpy(dev_new->name,name);
+                return dev_new->id;
         } else {
-                XLdevice * device_now;
+                XLdev * dev_now;
 
-                device_now=device_head;
+                dev_now=dev_head;
 
                 for(;;) {
-                        if(device_now->next_op==NULL)  {
+                        if(dev_now->next_id==NULL)  {
 
-                                device_now->next_op=device_new;
-                                device_new->op=device_now->op+1;
-                                device_new->next_op=NULL;
+                                dev_now->next_id=dev_new;
+                                dev_new->id=dev_now->id+1;
+                                dev_new->next_id=NULL;
+                                strcpy(dev_new->name,name);
+                                return dev_new->id;
+                        } else if(dev_now->id+1<dev_now->next_id->id) { //如果下一个设备的操作符与当前设备操作符有空位
 
-                                return device_new->op;
-                        } else if(device_now->op+1<device_now->next_op->op) { //如果下一个设备的操作符与当前设备操作符有空位
+                                dev_new->id=dev_now->id+1;            //新设备占据这个操作符
 
-                                device_new->op=device_now->op+1;            //新设备占据这个操作符
+                                dev_new->next_id=dev_now->next_id;       //设置新设备的下一个设备
 
-                                device_new->next_op=device_now->next_op;       //设置新设备的下一个设备
-
-                                device_now->next_op=device_new;             //设置现在设备的下一个设备为新设备
-
-                                return device_new->op;
-                        } else  device_now=device_now->next_op;  //下一个
+                                dev_now->next_id=dev_new;             //设置现在设备的下一个设备为新设备
+                                strcpy(dev_new->name,name);
+                                return dev_new->id;
+                        } else  dev_now=dev_now->next_id;  //下一个
 
                 }
 
@@ -78,103 +95,103 @@ dev_op_t device_create(void) {
 
 }
 
-dev_op_t device_del(dev_op_t dev_op) {
-        extern XLdevice * device_head;
-        XLdevice * device_now=device_head;
-        XLdevice * device_nowfront=NULL;
+dev_id_t dev_del(dev_id_t dev_id) {
+        extern XLdev * dev_head;
+        XLdev * dev_now=dev_head;
+        XLdev * dev_nowfront=NULL;
         for(;;) {
-                if(device_now->op==dev_op) {            //如果有这个设备
-                        if(device_now==device_head) {           //如果这个设备是设备头
-                                if(device_head->next_op==NULL) {        //如果就剩这一个设备
-                                        //free(device_head);                    //释放内存
-                                        device_head=NULL;                       //释放指针
+                if(dev_now->id==dev_id) {            //如果有这个设备
+                        if(dev_now==dev_head) {           //如果这个设备是设备头
+                                if(dev_head->next_id==NULL) {        //如果就剩这一个设备
+                                        free(dev_head);                    //释放内存
+                                        dev_head=NULL;                       //释放指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果还有其他设备
-                                        XLdevice * temp;
-                                        temp=device_head->next_op;              //将设备头赋予下一个设备
-                                        //free(device_head);                    //释放内存
-                                        device_head=temp;
+                                        XLdev * temp;
+                                        temp=dev_head->next_id;              //将设备头赋予下一个设备
+                                        free(dev_head);                    //释放内存
+                                        dev_head=temp;
                                         return 1;                                 //成功返回
                                 }
                         } else {                                //如果这个设备不是头
-                                if(device_now->next_op==NULL) {         //如果这个设备后面没有设备了
-                                        free(device_now);                       //释放内存
-                                        device_nowfront->next_op=NULL;          //删除前面一个设备的后端指针
+                                if(dev_now->next_id==NULL) {         //如果这个设备后面没有设备了
+                                        free(dev_now);                       //释放内存
+                                        dev_nowfront->next_id=NULL;          //删除前面一个设备的后端指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果没有设备了
-                                        XLdevice * temp;
-                                        temp=device_now->next_op;
-                                        device_nowfront->next_op=temp;          //前面一个设备的后端指针指向后一个设备
-                                        free(device_now);                       //释放内存
+                                        XLdev * temp;
+                                        temp=dev_now->next_id;
+                                        dev_nowfront->next_id=temp;          //前面一个设备的后端指针指向后一个设备
+                                        free(dev_now);                       //释放内存
                                         return 1;                                 //成功返回
                                 }
                         }
-                } else if(device_now->next_op!=NULL) {          //如果不是要找的设备但后面还有设备
-                        device_nowfront=device_now;                     //记录下当前操作设备的前一个设备
-                        device_now=device_now->next_op;                 //当前操作设备向后移动一个
-                } else return -1;                               //如果既不是要找的设备后面也没有设备了，报错退出
+                } else if(dev_now->next_id!=NULL) {          //如果不是要找的设备但后面还有设备
+                        dev_nowfront=dev_now;                     //记录下当前操作设备的前一个设备
+                        dev_now=dev_now->next_id;                 //当前操作设备向后移动一个
+                } else return 0;                               //如果既不是要找的设备后面也没有设备了，报错退出
         }
 }
 
-int8_t device_init(dev_op_t dev_op,str * name,init_type_t type) {
+/*int8_t dev_init(dev_id_t dev_id,str * name,init_type_t type) {
         if(type==DEVICE_TYPE_SN) {
-                sig_op_t signal_base;
-                signal_base=signal_create();
+                sig_id_t sig_base;
+                sig_base=sig_create();
 
-                if(device_set_name(dev_op,name)<0) {		//设置信号归属设备
+                if(dev_set_name(dev_id,name)<0) {		//设置信号归属设备
                         printf("set_dev_name error!\n");
-                        return -1;
+                        return 0;
                 }
                 printf("set_dev_name success!\n");
 
 
 
-                if(signal_set_name(signal_base,"snbase")<0) {	//基础信号设置
+                if(sig_set_name(sig_base,"snbase")<0) {	//基础信号设置
                         printf("set_name error!\n");
-                        return -1;
+                        return 0;
                 }
                 printf("set_name success!\n");
 
-                if(signal_add_par(signal_base,"mode")<0) {		//添加信号参数
+                if(sig_add_par(sig_base,"mode")<0) {		//添加信号参数
                         printf("set_par_name error!\n");
-                        return -1;
+                        return 0;
                 }
                 printf("set_par_name success!\n");
 
-                /*if(signal_del_par(signal_base,"mode")<0) {		//添加信号参数
+                /*if(sig_del_par(sig_base,"mode")<0) {		//添加信号参数
                         printf("del_par_name error!\n");
-                        return -1;
+                        return 0;
                 }
-                printf("del_par_name success!\n");*/
+                printf("del_par_name success!\n");
 
 
-
-                if(signal_set_dev(signal_base,dev_op)<0) {		//设置信号归属设备
+                if(dev_set_sig(sig_base,dev_id)<0) {		//设置信号归属设备
                         printf("set_dev error!\n");
-                        return -1;
+                        return 0;
                 }
                 return 0;
-        }else return -1;
-}
+        }else return 0;
+}*/
 
-void device_list(void) {
-        extern XLdevice * device_head;
-        XLdevice * device_now=device_head;
-        while(device_now!=NULL) {
-                printf("%d ",device_now->op);
-                device_now=device_now->next_op;
+void dev_list(void) {
+        extern XLdev * dev_head;
+        XLdev * dev_now=dev_head;
+        while(dev_now!=NULL) {
+                printf("%d ",dev_now->id);
+                dev_now=dev_now->next_id;
         }
 }
 
-sig_op_t device_get_signal(dev_op_t dev_op,str *name)
+sig_id_t dev_get_sig(dev_id_t dev_id,str *name)
 {
-    XLdevice * device=device_get(dev_op);
-    if(device->signal_h!=NULL)
+    if(name_legality(name)<=0)return 0;
+    XLdev * dev=dev_get(dev_id);
+    if(dev->sig_h!=NULL)
     {
-        XLdevice_sig_list * signal_now=device->signal_h;
+        XLdev_sig_list * sig_now=dev->sig_h;
         for(;;){
-            if(strcmp(name,signal_now->signal->name)==0)return signal_now->signal->op;
-            else if(signal_now->next!=NULL)signal_now=signal_now->next;
+            if(strcmp(name,sig_now->sig->name)==0)return sig_now->sig->id;
+            else if(sig_now->next!=NULL)sig_now=sig_now->next;
             else return 0;
         }
     }else
@@ -183,89 +200,135 @@ sig_op_t device_get_signal(dev_op_t dev_op,str *name)
     }
 }
 
-dev_op_t device_get_byname(str * name)
+dev_id_t dev_get_byname(str * name)
 {
-    extern XLdevice * device_head;
-    if(device_head!=NULL)
+    if(name_legality(name)<=0)return 0;
+    extern XLdev * dev_head;
+    if(dev_head!=NULL)
     {
-        XLdevice * device_now=device_head;
+        XLdev * dev_now=dev_head;
         for(;;)
         {
-            if(strcmp(name,device_now->name)==0)return device_now->op;
-            else if(device_now->next_op!=NULL) device_now=device_now->next_op;
-            else return -1;
+            if(strcmp(name,dev_now->name)==0)return dev_now->id;
+            else if(dev_now->next_id!=NULL) dev_now=dev_now->next_id;
+            else return 0;
         }
     }else{
-        return -1;
+        return 0;
     }
 }
 
-int8_t device_set_name(dev_op_t dev_op,str * name)
+int8_t dev_set_name(dev_id_t dev_id,str * name)
 {
-    XLdevice * device=device_get(dev_op);
-    if(device_get_byname(name)<=0)
+    if(name_legality(name)<=0)return 0;
+    XLdev * dev=dev_get(dev_id);
+    if(dev_get_byname(name)<=0)
     {
-        return -1;
+        return 0;
     }else{
-        strcpy(device->name,name);
+        strcpy(dev->name,name);
         return 1;
     }
 }
 
+int8_t dev_set_sig(dev_id_t dev_id,sig_id_t sig_id) {    //设置信号归属设备
+        XLdev * dev=dev_get(dev_id);                   //获得设备结构体
+        XLsig * sig=sig_get(sig_id);                   //获得信号结构体
+        if(sig!=NULL&&dev!=NULL&&strcmp(sig->name,"")!=0) //判断设备、信号、信号名三者非空
+        {
+            XLdev_sig_list *dev_sig_now=dev->sig_h;        //设备信号表的操作指针
+            if(dev_sig_now!=NULL)                                   //当前设备有信号
+            {
+                for(;;)
+                {                                               //循环找出信号
+                    if(strcmp(dev_sig_now->sig->name,sig->name)==0)return 0;
+                    else if(dev_sig_now->next!=NULL)dev_sig_now=dev_sig_now->next; //移位下一个
+                    else
+                    {                                                          //读完了
+                        sig->dev=dev;                                      //接到设备的信号表尾
+                        dev_sig_now->next=malloc(sizeof(XLdev_sig_list));
+                        memset(dev_sig_now,0,sizeof(XLdev_sig_list));
+                        dev_sig_now->next->sig=sig;
+                        dev_sig_now->next->sig->dev=dev;
+                        dev_sig_now->next->next=NULL;
+                        return 1;
+                    }
+                }
+            }
+            else
+            {
+                dev->sig_h=malloc(sizeof(XLdev_sig_list));
+                memset(dev->sig_h,0,sizeof(XLdev_sig_list));//
+                dev->sig_h->next=NULL;
+                dev->sig_h->sig=sig;
+                sig->dev=dev;
+                return 1;
+            }
+        } else return 0;
+}
 
-/*netdevice */
-XLnetdev * netdev_get(netdev_op_t netdev_op) {
+/*netdev */
+XLnetdev * netdev_get(netdev_id_t netdev_id) {
         extern XLnetdev * netdev_head;
         XLnetdev * netdev_now=netdev_head;
         for(;;) {
-                if(netdev_now->op==netdev_op)
+                if(netdev_now->id==netdev_id)
                         return netdev_now;
 
-                else if(netdev_now->next_op!=NULL)
-                        netdev_now=netdev_now->next_op;
+                else if(netdev_now->next_id!=NULL)
+                        netdev_now=netdev_now->next_id;
                 else return NULL;
         }
 }
 
-netdev_op_t netdev_create(void) {
+netdev_id_t netdev_create(str *name) {
+        if(name_legality(name)<=0)return 0; //名字合法性判断
+        if(netdev_get_byname(name)!=0)         //判断是否有重名设备
+        {
+            printf("same name!\n");
+            return 0;
+        }
         XLnetdev * netdev_new=malloc(sizeof(XLnetdev));
+        memset(netdev_new,0,sizeof(XLnetdev));//
         extern XLnetdev * netdev_head;
 
         if(netdev_head==NULL) {
                 netdev_head=netdev_new;
-                netdev_new->op=1;
-                netdev_new->next_op=NULL;
-                return netdev_new->op;
-        } else if(netdev_head->op>1) {
-                netdev_new->op=1;
+                netdev_new->id=1;
+                netdev_new->next_id=NULL;
+                strcpy(netdev_new->name,name);
+                return netdev_new->id;
+        } else if(netdev_head->id>1) {
+                netdev_new->id=1;
                 XLnetdev * temp;
                 temp=netdev_head;
                 netdev_head=netdev_new;
-                netdev_new->next_op=temp;
-                return netdev_new->op;
+                netdev_new->next_id=temp;
+                strcpy(netdev_new->name,name);
+                return netdev_new->id;
         } else {
                 XLnetdev * netdev_now;
 
                 netdev_now=netdev_head;
 
                 for(;;) {
-                        if(netdev_now->next_op==NULL)  {
+                        if(netdev_now->next_id==NULL)  {
 
-                                netdev_now->next_op=netdev_new;
-                                netdev_new->op=netdev_now->op+1;
-                                netdev_new->next_op=NULL;
+                                netdev_now->next_id=netdev_new;
+                                netdev_new->id=netdev_now->id+1;
+                                netdev_new->next_id=NULL;
+                                strcpy(netdev_new->name,name);
+                                return netdev_new->id;
+                        } else if(netdev_now->id+1<netdev_now->next_id->id) { //如果下一个设备的操作符与当前设备操作符有空位
 
-                                return netdev_new->op;
-                        } else if(netdev_now->op+1<netdev_now->next_op->op) { //如果下一个设备的操作符与当前设备操作符有空位
+                                netdev_new->id=netdev_now->id+1;            //新设备占据这个操作符
 
-                                netdev_new->op=netdev_now->op+1;            //新设备占据这个操作符
+                                netdev_new->next_id=netdev_now->next_id;       //设置新设备的下一个设备
 
-                                netdev_new->next_op=netdev_now->next_op;       //设置新设备的下一个设备
-
-                                netdev_now->next_op=netdev_new;             //设置现在设备的下一个设备为新设备
-
-                                return netdev_new->op;
-                        } else  netdev_now=netdev_now->next_op;  //下一个
+                                netdev_now->next_id=netdev_new;             //设置现在设备的下一个设备为新设备
+                                strcpy(netdev_new->name,name);
+                                return netdev_new->id;
+                        } else  netdev_now=netdev_now->next_id;  //下一个
 
                 }
 
@@ -273,41 +336,41 @@ netdev_op_t netdev_create(void) {
 
 }
 
-netdev_op_t netdev_del(netdev_op_t dev_op) {
+netdev_id_t netdev_del(netdev_id_t dev_id) {
         extern XLnetdev * netdev_head;
         XLnetdev * netdev_now=netdev_head;
         XLnetdev * netdev_nowfront=NULL;
         for(;;) {
-                if(netdev_now->op==dev_op) {            //如果有这个设备
+                if(netdev_now->id==dev_id) {            //如果有这个设备
                         if(netdev_now==netdev_head) {           //如果这个设备是设备头
-                                if(netdev_head->next_op==NULL) {        //如果就剩这一个设备
-                                        //free(netdev_head);                    //释放内存
+                                if(netdev_head->next_id==NULL) {        //如果就剩这一个设备
+                                        free(netdev_head);                    //释放内存
                                         netdev_head=NULL;                       //释放指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果还有其他设备
                                         XLnetdev * temp;
-                                        temp=netdev_head->next_op;              //将设备头赋予下一个设备
-                                        //free(netdev_head);                    //释放内存
+                                        temp=netdev_head->next_id;              //将设备头赋予下一个设备
+                                        free(netdev_head);                    //释放内存
                                         netdev_head=temp;
                                         return 1;                                 //成功返回
                                 }
                         } else {                                //如果这个设备不是头
-                                if(netdev_now->next_op==NULL) {         //如果这个设备后面没有设备了
+                                if(netdev_now->next_id==NULL) {         //如果这个设备后面没有设备了
                                         free(netdev_now);                       //释放内存
-                                        netdev_nowfront->next_op=NULL;          //删除前面一个设备的后端指针
+                                        netdev_nowfront->next_id=NULL;          //删除前面一个设备的后端指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果没有设备了
                                         XLnetdev * temp;
-                                        temp=netdev_now->next_op;
-                                        netdev_nowfront->next_op=temp;          //前面一个设备的后端指针指向后一个设备
+                                        temp=netdev_now->next_id;
+                                        netdev_nowfront->next_id=temp;          //前面一个设备的后端指针指向后一个设备
                                         free(netdev_now);                       //释放内存
                                         return 1;                                 //成功返回
                                 }
                         }
-                } else if(netdev_now->next_op!=NULL) {          //如果不是要找的设备但后面还有设备
+                } else if(netdev_now->next_id!=NULL) {          //如果不是要找的设备但后面还有设备
                         netdev_nowfront=netdev_now;                     //记录下当前操作设备的前一个设备
-                        netdev_now=netdev_now->next_op;                 //当前操作设备向后移动一个
-                } else return -1;                               //如果既不是要找的设备后面也没有设备了，报错退出
+                        netdev_now=netdev_now->next_id;                 //当前操作设备向后移动一个
+                } else return 0;                               //如果既不是要找的设备后面也没有设备了，报错退出
         }
 }
 
@@ -315,46 +378,89 @@ void netdev_list(void) {
         extern XLnetdev * netdev_head;
         XLnetdev * netdev_now=netdev_head;
         while(netdev_now!=NULL) {
-                printf("%d ",netdev_now->op);
-                netdev_now=netdev_now->next_op;
+                printf("%d ",netdev_now->id);
+                netdev_now=netdev_now->next_id;
         }
 }
 
-/*relate*/
-int8_t relate_set(op_t dev1,dev_type_t type1,op_t dev2,dev_type_t type2,mod_t hard,mod_t soft)
+netdev_id_t netdev_get_byname(str * name)
 {
-    if(type1==DEV_TYPE_LO){if(device_get(dev1)==NULL)return -1;}
-    else if(type1==DEV_TYPE_NET){if(netdev_get(dev1)==NULL)return -1;}
-    else return -1;
-    if(type2==DEV_TYPE_LO){if(device_get(dev2)==NULL)return -1;}
-    else if(type2==DEV_TYPE_NET){if(netdev_get(dev2)==NULL)return -1;}
-    else return -1;
+    if(name_legality(name)<=0)return 0;
+    extern XLnetdev * netdev_head;
+    if(netdev_head!=NULL)
+    {
+        XLnetdev * netdev_now=netdev_head;
+        for(;;)
+        {
+            if(strcmp(name,netdev_now->name)==0)return netdev_now->id;
+            else if(netdev_now->next_id!=NULL) netdev_now=netdev_now->next_id;
+            else return 0;
+        }
+    }else{
+        return 0;
+    }
+}
+
+int8_t netdev_set_name(netdev_id_t netdev_id,str * name)
+{
+    if(name_legality(name)<=0)return 0;
+    XLnetdev * netdev=netdev_get(netdev_id);
+    if(netdev_get_byname(name)<=0)
+    {
+        return 0;
+    }else{
+        strcpy(netdev->name,name);
+        return 1;
+    }
+}
+
+
+int8_t netdev_set_net(netdev_id_t id,ip ip,uint16_t port,uint8_t family)
+{
+    XLnetdev * netdev=netdev_get(id);
+    if(netdev==NULL)return 0;
+    netdev->net.ip=ip;
+    netdev->net.family=family;
+    netdev->net.port=port;
+    return 1;
+}
+/*relate*/
+int8_t relate_set(id_t dev1,dev_type_t type1,id_t dev2,dev_type_t type2,mod_t hard,mod_t soft)
+{
+    if(type1==DEV_TYPE_LO){if(dev_get(dev1)==NULL)return 0;}
+    else if(type1==DEV_TYPE_NET){if(netdev_get(dev1)==NULL)return 0;}
+    else return 0;
+    if(type2==DEV_TYPE_LO){if(dev_get(dev2)==NULL)return 0;}
+    else if(type2==DEV_TYPE_NET){if(netdev_get(dev2)==NULL)return 0;}
+    else return 0;
 
     if(type1==type2)
     {
-        if(type1==DEV_TYPE_LO)if(device_get(dev1)==device_get(dev2))return -1;
-        if(type1==DEV_TYPE_NET)if(netdev_get(dev1)==netdev_get(dev2))return -1;
+        if(type1==DEV_TYPE_LO)if(dev_get(dev1)==dev_get(dev2))return 0;
+        if(type1==DEV_TYPE_NET)if(netdev_get(dev1)==netdev_get(dev2))return 0;
     }
-    if(hard>2||hard<0)return -1;
-    if(soft>2||soft<0)return -1;
+    if(hard>2||hard<0)return 0;
+    if(soft>2||soft<0)return 0;
 
     extern XLrelate * relate_head;
     XLrelate *relate_now=relate_head,*relate_new=NULL;
     if(relate_head==NULL)
     {
         relate_new=malloc(sizeof(struct XLrelate));
+        memset(relate_new,0,sizeof(XLrelate));
         relate_head=relate_new;
     }
     else{
         int a=1;
         while(a!=0){
-            if(relate_now->op1==dev1&&relate_now->dev1_type==type1&&relate_now->op2==dev2&&relate_now->dev2_type==type2){
+            if(relate_now->id1==dev1&&relate_now->dev1_type==type1&&relate_now->id2==dev2&&relate_now->dev2_type==type2){
                 relate_new=relate_now;
                 a=0;
             }
             else if(relate_now->next==NULL)
             {
                 relate_new=malloc(sizeof(struct XLrelate));
+                memset(relate_new,0,sizeof(XLrelate));
                 relate_now->next=relate_new;
                 a=0;
             }
@@ -364,21 +470,21 @@ int8_t relate_set(op_t dev1,dev_type_t type1,op_t dev2,dev_type_t type2,mod_t ha
         /*else if(a==2) {relate_new=malloc(sizeof(struct XLrelate));
         relate_now->next=relate_new;}*/
     }
-    relate_new->op1=dev1;
-    relate_new->op2=dev2;
+    relate_new->id1=dev1;
+    relate_new->id2=dev2;
     relate_new->dev1_type=type1;
     relate_new->dev2_type=type2;
     relate_new->hard=hard;
     relate_new->soft=soft;
     return 1;
 }
-int8_t relate_del(op_t dev1,dev_type_t type1,op_t dev2,dev_type_t type2)
+int8_t relate_del(id_t dev1,dev_type_t type1,id_t dev2,dev_type_t type2)
 {
     extern XLrelate * relate_head;
     XLrelate * relate_front=NULL,*relate_now=relate_head;
     while(relate_now!=NULL)
     {
-        if(relate_now->op1==dev1&&relate_now->dev1_type==type1&&relate_now->op2==dev2&&relate_now->dev2_type==type2)
+        if(relate_now->id1==dev1&&relate_now->dev1_type==type1&&relate_now->id2==dev2&&relate_now->dev2_type==type2)
         {
             if(relate_front==NULL){
                 if(relate_now->next==NULL)relate_head=NULL;
@@ -393,7 +499,7 @@ int8_t relate_del(op_t dev1,dev_type_t type1,op_t dev2,dev_type_t type2)
         relate_front=relate_now;
         relate_now=relate_now->next;
     }
-    return -1;
+    return 0;
 }
 void relate_list(void)
 {
@@ -405,14 +511,14 @@ void relate_list(void)
     {
         if(relate_now->dev1_type==DEV_TYPE_LO)printf("LO:");
         if(relate_now->dev1_type==DEV_TYPE_NET)printf("NET:");
-        printf("%d ",relate_now->op1);
+        printf("%d ",relate_now->id1);
         printf("(");
         if(relate_now->hard==RELATE_HARD_1p)printf("H");
         if(relate_now->soft==RELATE_SOFT_1p)printf("S");
         printf(")");
         if(relate_now->dev2_type==DEV_TYPE_LO)printf("LO:");
         if(relate_now->dev2_type==DEV_TYPE_NET)printf("NET:");
-        printf("%d ",relate_now->op2);
+        printf("%d ",relate_now->id2);
         printf("(");
         if(relate_now->hard==RELATE_HARD_2p)printf("H");
         if(relate_now->soft==RELATE_SOFT_2p)printf("S");
