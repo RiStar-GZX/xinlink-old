@@ -30,11 +30,11 @@ int my_slot(sig_id_t sig_id,XLsig_pak * pak)
 }
 
 int main() {
+    net_init();
     dev_id_t dev=dev_create("device");
     sig_id_t sig=sig_create("signal");
     dev_set_sig(dev,sig);
     sig_set_slot(sig,my_slot);
-    net_init();
     while (1);
     return 0;
 }
