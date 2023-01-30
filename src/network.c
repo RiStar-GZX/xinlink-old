@@ -92,16 +92,11 @@ int8_t net_send(netdev_id_t id,uint8_t * data,uint32_t size)    //发送数据�
     serveraddr.sin_addr.s_addr = net->ip.net_ipv4;//ip地址
     serveraddr.sin_port = htons(net->port);
 
-    while(1)
+    if(sendto(sockfd, data, size, 0, (struct sockaddr *)&serveraddr, addrlen) == -1)
     {
-        int i;
-        scanf("%d",&i);
-        if(sendto(sockfd, data, size, 0, (struct sockaddr *)&serveraddr, addrlen) == -1)
-        {
             perror("fail to sendto");
-            exit(1);
-        }
-    }
+    }     
+    
 
     //第四步：关闭套接字文件描述符
     close(sockfd);
