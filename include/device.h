@@ -35,9 +35,6 @@
 #define NETWORK_IPV6 2
 //#define NETWORK_BOTH 3
 
-#define NETWORK_IPV4 1
-#define NETWORK_IPV6 2
-
 #define DEV_TYPE_LO 0
 #define DEV_TYPE_NET 1
 
@@ -55,13 +52,13 @@
  * Return:         // 函数返回值的说明
  * 其他s:         // 其它说明
  */
-typedef union ip{
+typedef struct ip{
     uint32_t net_ipv4;
-    uint8_t net_ipv6[6];
+    //uint8_t net_ipv6[6];
 }ip;
 
 typedef struct XLnet {  //网络
-    union ip ip;
+    struct ip ip;
     uint8_t family;
     uint16_t port;
 } XLnet;

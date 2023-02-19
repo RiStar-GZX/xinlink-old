@@ -15,14 +15,15 @@ typedef struct XLsig_par {       //信号参数结构体
         struct XLsig_par * next;     //下一个参数
 } XLsig_par;
 
-typedef struct XLsig_pak{
+typedef struct XLpak{
     str name[SIGNAL_NAME_LENGTH];
+    mode_t mode;
     struct XLsig_par * sig_par_h;
     dev_id_t id;
     //struct XLnet net;
-}XLsig_pak;
+}XLpak;
 
-typedef  int (*FUNC)(sig_id_t sig_id,XLsig_pak * pak);
+typedef  int (*FUNC)(sig_id_t sig_id,XLpak * pak);
 
 
 typedef struct XLsig {           //信号
@@ -55,15 +56,15 @@ void sig_list(void) ;
 int8_t sig_add_par(sig_id_t sig_id,str * name);			//信号设置参数
 int8_t sig_del_par(sig_id_t sig_id,str * name);			//信号删除参数
 
-int8_t sig_send(dev_id_t dev_id,str * sig_name,XLsig_pak * pak);     //触发信号
+int8_t sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak);     //触发信号
 int8_t sig_set_slot(sig_id_t sig_id,FUNC slot);          //设置信号槽
-int8_t sig_slot(sig_id_t sig_id,XLsig_pak * pak);                  //启动信号槽
+int8_t sig_slot(sig_id_t sig_id,XLpak * pak);                  //启动信号槽
 uint8_t * sigpar_get_data(sig_id_t sig_id,str * name,uint32_t * datasize);
 int8_t sigpar_set_data(sig_id_t sig_id,str * name,par_data_t * data,uint32_t datasize);
 
-int8_t pak_del_par(XLsig_pak *  pak,str * name);
-int8_t pak_add_par(XLsig_pak * pak,str * name);
-int8_t pak_set_data(XLsig_pak * pak,str * name,uint8_t * data,uint32_t datasize);
-uint8_t * pak_get_data(XLsig_pak * pak,str * name,uint32_t * datasize);
+int8_t pak_del_par(XLpak *  pak,str * name);
+int8_t pak_add_par(XLpak * pak,str * name);
+int8_t pak_set_data(XLpak * pak,str * name,uint8_t * data,uint32_t datasize);
+uint8_t * pak_get_data(XLpak * pak,str * name,uint32_t * datasize);
 #endif // sig_H
 
