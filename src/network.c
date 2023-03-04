@@ -384,12 +384,7 @@ int net_send_pak(netdev_id_t netdev_id,XLpak * pak)      //将参数打包
     }
     a=PAK_DATA_END;
     buf=add_data(buf,&p,&a,1);
-    //调试
-    show_buf(buf);
-    //dev_id_t dev_id;
-    //XLpak pak_rev;
-    //net_get_pak(buf,datasize,&dev_id,&pak_rev);
-    //发送buf
+    show_buf(buf);//调试
     if(netdev_get(netdev_id)==NULL)return 0;
     net_send(&netdev_get(netdev_id)->net,buf,datasize);
     return 1;
