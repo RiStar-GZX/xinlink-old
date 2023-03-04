@@ -135,7 +135,7 @@ dev_id_t sig_get_dev(sig_id_t sig_id) {
 
 
 
-int8_t sig_set_name(sig_id_t sig_id,str * name) {     //设置信号的名字
+int sig_set_name(sig_id_t sig_id,str * name) {     //设置信号的名字
         if(name_legality(name)<=0)return 0;
         XLsig *sig=sig_get(sig_id);                //通过操作点获得信号结构体
         if(sig->dev==NULL) {
@@ -164,7 +164,7 @@ str * sig_get_name(sig_id_t sig_id) {     //信号的名字
 }
 
 
-int8_t sig_add_par(sig_id_t sig_id,str * name) {			//添加信号参数（信号操作点，参数名）
+int sig_add_par(sig_id_t sig_id,str * name) {			//添加信号参数（信号操作点，参数名）
         XLsig * sig=sig_get(sig_id);
         if(sig->sig_par_h!=NULL) {							//信号有参数
                 XLsig_par * par_now=sig->sig_par_h;
@@ -190,7 +190,7 @@ int8_t sig_add_par(sig_id_t sig_id,str * name) {			//添加信号参数（信号
         }
 }
 
-int8_t sig_del_par(sig_id_t sig_id,str * name) {			//删除信号函数（信号操作点，信号名）
+int sig_del_par(sig_id_t sig_id,str * name) {			//删除信号函数（信号操作点，信号名）
         XLsig * sig=sig_get(sig_id);
         if(sig->sig_par_h!=NULL) {
                 XLsig_par * par_now=sig->sig_par_h;
@@ -243,7 +243,7 @@ uint8_t * sigpar_get_data(sig_id_t sig_id,str * name,uint32_t * datasize)
     return NULL;
 }
 
-int8_t sigpar_set_data(sig_id_t sig_id,str * name,par_data_t * data,uint32_t datasize)
+int sigpar_set_data(sig_id_t sig_id,str * name,par_data_t * data,uint32_t datasize)
 {
     XLsig * sig=sig_get(sig_id);
     XLsig_par * sigpar_now=sig->sig_par_h;
@@ -262,7 +262,7 @@ int8_t sigpar_set_data(sig_id_t sig_id,str * name,par_data_t * data,uint32_t dat
     return 0;
 }
 
-int8_t sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak)
+int sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak)
 {
     if(dev_get(dev_id)!=NULL)
     {
@@ -272,7 +272,7 @@ int8_t sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak)
     else return 0;
 }
 
-int8_t sig_slot(sig_id_t sig_id,XLpak * pak)
+int sig_slot(sig_id_t sig_id,XLpak * pak)
 {
     XLsig *sig;
     sig=sig_get(sig_id);
@@ -286,7 +286,7 @@ int8_t sig_slot(sig_id_t sig_id,XLpak * pak)
 }
 
 
-int8_t sig_set_slot(sig_id_t sig_id,FUNC slot)
+int sig_set_slot(sig_id_t sig_id,FUNC slot)
 {
     XLsig * sig=sig_get(sig_id);
     if(sig!=NULL)
@@ -297,7 +297,7 @@ int8_t sig_set_slot(sig_id_t sig_id,FUNC slot)
 }
 
 
-int8_t pak_add_par(XLpak * pak,str * name) {			//添加信号参数（信号操作点，参数名）
+int pak_add_par(XLpak * pak,str * name) {			//添加信号参数（信号操作点，参数名）
 
         if(pak->sig_par_h!=NULL) {							//信号有参数
                 XLsig_par * par_now=pak->sig_par_h;
@@ -323,40 +323,39 @@ int8_t pak_add_par(XLpak * pak,str * name) {			//添加信号参数（信号操�
         }
 }
 
-int8_t pak_del_par(XLpak *  pak,str * name) {			//删除信号函数（信号操作点，信号名）
-        if(pak->sig_par_h!=NULL) {
-                XLsig_par * par_now=pak->sig_par_h;
-                XLsig_par * par_now_front=NULL;
-                for(;;) {
-                        if(strcmp(name,par_now->name)==0) {						//名字一样
-                                if(par_now==pak->sig_par_h) {							//位于表头
-                                        if(par_now->next==NULL) {							//无下一个
-                                                free(par_now);
-                                                return 1;
-                                        } else {											//有下一个
-                                                pak->sig_par_h=par_now->next;				//下一个设为表头
-                                                free(par_now);
-                                                return 1;
-                                        }
-                                } else if(par_now->next==NULL) {						//不是头且没有下一个
-                                        par_now_front->next=NULL;							//前一个的下一个指空
+int pak_del_par(XLpak *  pak,str * name) {			//删除信号函数（信号操作点，信号名）
+        if(pak->sig_par_h==NULL) return 0;
+        XLsig_par * par_now=pak->sig_par_h;
+        XLsig_par * par_now_front=NULL;
+        for(;;) {
+                if(strcmp(name,par_now->name)==0) {						//名字一样
+                        if(par_now==pak->sig_par_h) {							//位于表头
+                                if(par_now->next==NULL) {							//无下一个
                                         free(par_now);
                                         return 1;
-                                } else {												//不是头但有下一个
-                                        par_now_front->next=par_now->next;					//前后相连
+                                } else {											//有下一个
+                                        pak->sig_par_h=par_now->next;				//下一个设为表头
                                         free(par_now);
                                         return 1;
                                 }
-                        } else if(par_now->next!=NULL) {							//
-                                par_now_front=par_now;
-                                par_now=par_now->next;
-                        } else return 0;
+                        } else if(par_now->next==NULL) {						//不是头且没有下一个
+                                par_now_front->next=NULL;							//前一个的下一个指空
+                                free(par_now);
+                                return 1;
+                        } else {												//不是头但有下一个
+                                par_now_front->next=par_now->next;					//前后相连
+                                free(par_now);
+                                return 1;
+                        }
+                } else if(par_now->next!=NULL) {							//
+                        par_now_front=par_now;
+                        par_now=par_now->next;
+                } else return 0;
 
-                }
-        } else return 0;
+        }
 }
 
-int8_t pak_set_data(XLpak * pak,str * name,uint8_t * data,uint32_t datasize)
+int pak_set_data(XLpak * pak,str * name,void * data,uint32_t datasize)
 {
     XLsig_par * par_now=pak->sig_par_h;
     if(par_now!=NULL)
@@ -366,7 +365,7 @@ int8_t pak_set_data(XLpak * pak,str * name,uint8_t * data,uint32_t datasize)
             par_now=par_now->next;
         }
         if(strcmp(par_now->name,name)==0){
-            par_now->data=data;
+            par_now->data=(uint8_t *)data;
             par_now->datasize=datasize;
         }
         else return 0;

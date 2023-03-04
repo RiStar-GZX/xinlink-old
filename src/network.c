@@ -1,4 +1,229 @@
 #include <network.h>
+/*----------------------------------------------------------------------*/
+/*下面的几个函数是用于对数据的处理*/
+void * add_data(void * buf,int * p,void * data,int datasize)
+{
+    if(p==NULL||data==NULL||buf==NULL)return NULL;
+    uint8_t *buf_p=buf,*data_p=data,i=0;
+    buf_p+=*p;
+    for(i=0;i<datasize;i++)
+    {
+        *buf_p=*data_p;
+        data_p++;
+        buf_p++;
+    }
+    *p+=i;
+    return buf;
+}
+
+void * get_data(void *buf,int *p,int datasize)
+{
+    if(buf==NULL||p==NULL||datasize<=0)return NULL;
+    uint8_t * data=malloc(sizeof(uint8_t)*datasize),*data_p=data;
+    uint8_t * buf_p=buf+*p;
+    int i;
+    for(i=0;i<datasize;i++)
+    {
+        *data_p=*buf_p;
+        data_p++;
+        buf_p++;
+    }
+    *p+=i;
+    return data;
+}
+
+str * get_str(void *buf,int *p,int maxsize)
+{
+     if(buf==NULL||p==NULL||*p>=maxsize)return NULL;
+     uint8_t * buf_p=buf;
+     buf_p+=*p;
+     int i=1;
+     while (*buf_p!='\0')
+     {
+         buf_p++;
+         i++;
+         if(i>maxsize)return NULL;
+     }
+     str * data=malloc(sizeof(uint8_t)*i),*data_p=data;
+     buf_p=buf+*p;
+     for(int j=0;j<i;j++)
+     {
+         *data_p=*buf_p;
+         data_p++;
+         buf_p++;
+     }
+     *p+=i;
+     return data;
+}
+
+void * get_par_data(void *buf,int *p,int * datasize,int maxsize)
+{
+     if(buf==NULL||p==NULL||*p>=maxsize)return NULL;
+
+     uint8_t * buf_p=buf+*p;
+     int i=1;
+     while (*buf_p!=PAK_PAR_DATA_END)
+     {
+         buf_p++;
+         i++;
+         if(i>maxsize)return NULL;
+     }
+     uint8_t * data=malloc(sizeof(uint8_t)*i),*data_p=data;
+     buf_p=buf+*p;
+     for(int j=0;j<i;j++)
+     {
+         *data_p=*buf_p;
+         data_p++;
+         buf_p++;
+     }
+     *p+=i;
+     *datasize=i-1;
+     return data;
+}
+
+void show_buf(uint8_t *data)       //展示数据包(调试用)
+{
+    char *p = data;//uint8_t a=255;
+    while (*p !=(char)PAK_DATA_END)
+    {
+        if(*p==(char)PAK_PAR_DATA_END)printf("*");
+        else if(*p=='\0')printf(" ");
+        else printf("%c",*p);
+        p++;
+    }
+    printf("!\n");
+}
+void show_par_data(uint8_t *data,uint32_t datasize)          //展示par_data(调试用)
+{
+    uint8_t *p = data,i=0;
+    while (i!=datasize)
+    {
+        printf("%c",*p);
+        p++;
+        i++;
+    }
+}
+
+int du_buf_size(uint8_t *data)
+{
+    int i=1;
+    uint8_t *p = data;
+    while (*p!=PAK_DATA_END)
+    {
+        p++;
+        i++;
+        if(i>PAK_MAX_SIZE)return -1;
+    }
+    return i;
+}
+/*----------------------------------------------------------------------------------------------------*/
+/*下面的几个函数是用于数据包的发送与接收*/
+
+/*发送网络数据包（正常）*/
+int net_send(XLnet * net,uint8_t * data,uint32_t size)
+{
+    //XLnet * net=&netdev_get(id)->net;
+    //第一步：创建套接字
+    int sockfd;
+    if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+    {
+        perror("fail to socket");
+        exit(1);
+    }
+
+    printf("sockfd = %d\n", sockfd);
+    //第二步：填充服务器网络信息结构体 sockaddr_in
+    struct sockaddr_in serveraddr;
+    socklen_t addrlen = sizeof(serveraddr);
+
+    serveraddr.sin_family = AF_INET; //协议族，AF_INET：ipv4网络协议
+    serveraddr.sin_addr.s_addr = net->ip.net_ipv4;//ip地址
+    serveraddr.sin_port = htons(net->port);
+    if(sendto(sockfd, data, size, 0, (struct sockaddr *)&serveraddr, addrlen) == -1)
+    {
+        perror("fail to sendto");
+        exit(1);
+    }
+    //第四步：关闭套接字文件描述符
+    close(sockfd);
+    return 0;
+}
+
+/*网络接受程序初始化*/
+pthread_t net_init(void)
+{
+    pthread_t tid;
+    //创建网络接收线程
+    if(pthread_create(&tid,NULL,net_pthread,&tid))
+    {
+        perror("Fail to create thread:");
+        return 0;
+    }
+    return tid;
+}
+
+int net_pthread(void)   //接受网络数据包的线程
+ {
+     while(1)
+     {
+        int sockfd; //文件描述符
+        struct sockaddr_in serveraddr; //服务器网络信息结构体
+        socklen_t addrlen = sizeof(serveraddr);
+
+        //创建套接字
+        if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        {
+            perror("fail to socket");
+            exit(1);
+        }
+
+        //填充服务器网络信息结构体
+        serveraddr.sin_family = AF_INET;
+        serveraddr.sin_addr.s_addr = inet_addr("192.168.1.23");     //后面要传参
+        serveraddr.sin_port = htons(8181);
+
+        //将套接字与服务器网络信息结构体绑定
+        if(bind(sockfd, (struct sockaddr *)&serveraddr, addrlen) < 0)
+        {
+            perror("fail to bind");
+            exit(1);
+        }
+
+        while(1)
+        {
+            //进行通信
+            uint8_t * data=malloc(sizeof(uint8_t)*PAK_DATA_SIZE);
+            struct sockaddr_in clientaddr;
+            if(recvfrom(sockfd, data, 128, 0, (struct sockaddr *)&clientaddr, &addrlen) < 0)
+            {
+                perror("fail to recvfrom");
+                exit(1);
+            }
+
+            printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
+            show_buf(data);
+            netdev_id_t id;
+            XLpak pak;
+            if(net_get_pak(data,du_buf_size(data),&id,&pak)<=0)printf("pak error!\n");  //从数据包中提取出pak
+            else{
+                /*调试部分*/
+                printf("pak id=%d pak sig:%s\n",id,pak.name);
+                printf("par name:%s\n data:",pak.sig_par_h->name);
+                show_par_data(pak.sig_par_h->data,pak.sig_par_h->datasize);
+                printf("\npar name:%s\n data:",pak.sig_par_h->next->name);
+                show_par_data(pak.sig_par_h->next->data,pak.sig_par_h->next->datasize);
+                printf("\n\n");
+                /*触发事件*/
+                sig_send(id,pak.name,&pak);
+            }
+        }
+
+        //关闭文件描述符
+        close(sockfd);
+     }
+}
+
+/*网络广播接收（将加入net_init）*/
 struct XLCore_list * net_rev_search(void)
 {
     int sockfd; //文件描述符
@@ -31,7 +256,8 @@ struct XLCore_list * net_rev_search(void)
         }
         //system("clear");
         printf("[%s ‐ %d]: %s\n", inet_ntoa(sendaddr.sin_addr), ntohs(sendaddr.sin_port), data);
-        show_data(data);
+        /*以下部分将封装为函数*/
+        show_buf(data);
         char * data_p=data,*ip_p;
         uint32_t ipv4;
         uint16_t port;
@@ -52,16 +278,14 @@ struct XLCore_list * net_rev_search(void)
                 ip_p++;
             }
             printf("ip:%x port:%d\n",ipv4,port);
-          /*  XLnet net;
-            net.ip.net_ipv4=ipv4;
-            net.port=port;
-            net_send();*/
+            /*获得发送者的信息后与其对接 */
+            //……
         }
     }
     //|mode|ip|port|end|
     return NULL;
 }
-
+/*网络数据广播*/
 struct XLCore_list * net_search(XLnet * net)
 {
 
@@ -120,237 +344,61 @@ struct XLCore_list * net_search(XLnet * net)
 
      return 0;
 }
-
-int8_t net_pthread(void)   //使用UDP,接收数据包并且提取出数据
- {
-     while(1)
-     {
-        int sockfd; //文件描述符
-        struct sockaddr_in serveraddr; //服务器网络信息结构体
-        socklen_t addrlen = sizeof(serveraddr);
-
-        //创建套接字
-        if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-        {
-            perror("fail to socket");
-            exit(1);
-        }
-
-        //填充服务器网络信息结构体
-        serveraddr.sin_family = AF_INET;
-        serveraddr.sin_addr.s_addr = inet_addr("192.168.1.23");
-        serveraddr.sin_port = htons(8181);
-
-        //将套接字与服务器网络信息结构体绑定
-        if(bind(sockfd, (struct sockaddr *)&serveraddr, addrlen) < 0)
-        {
-            perror("fail to bind");
-            exit(1);
-        }
-
-        while(1)
-        {
-            //进行通信
-            uint8_t * data=malloc(sizeof(uint8_t)*PAK_DATA_SIZE);
-            struct sockaddr_in clientaddr;
-            if(recvfrom(sockfd, data, 128, 0, (struct sockaddr *)&clientaddr, &addrlen) < 0)
-            {
-                perror("fail to recvfrom");
-                exit(1);
-            }
-
-            printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);
-            show_data(data);
-            //printf("du_pak_size:%d\n",du_pak_size(data));
-            netdev_id_t id;
-            XLpak pak;
-            if(net_get_pak(data,du_pak_size(data),&id,&pak)<=0)printf("pak error!\n");
-            else{
-                printf("pak id=%d pak sig:%s\n",id,pak.name);
-                printf("par name:%s\n data:",pak.sig_par_h->name);
-                show_d(pak.sig_par_h->data,pak.sig_par_h->datasize);
-                printf("\npar name:%s\n data:",pak.sig_par_h->next->name);
-                show_d(pak.sig_par_h->next->data,pak.sig_par_h->next->datasize);
-                printf("\n\n");
-                sig_send(id,pak.name,&pak);
-            }
-        }
-
-        //关闭文件描述符
-        close(sockfd);
-     }
-}
-
-pthread_t net_init(void) //网络初始化（建立数据包的接收线程）
-{
-    pthread_t tid;
-
-    if(pthread_create(&tid,NULL,net_pthread,&tid))
-    {
-        perror("Fail to create thread:");
-        return 0;
-    }
-    return tid;
-}
-
-int8_t net_send(XLnet * net,uint8_t * data,uint32_t size)    //发送数据包
-{
-    //XLnet * net=&netdev_get(id)->net;
-    //第一步：创建套接字
-    int sockfd;
-    if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
-    {
-        perror("fail to socket");
-        exit(1);
-    }
-
-    printf("sockfd = %d\n", sockfd);
-    //第二步：填充服务器网络信息结构体 sockaddr_in
-    struct sockaddr_in serveraddr;
-    socklen_t addrlen = sizeof(serveraddr);
-
-    serveraddr.sin_family = AF_INET; //协议族，AF_INET：ipv4网络协议
-    serveraddr.sin_addr.s_addr = net->ip.net_ipv4;//ip地址
-    serveraddr.sin_port = htons(net->port);
-
-    while(1)
-    {
-        int i;
-        scanf("%d",&i);
-        if(sendto(sockfd, data, size, 0, (struct sockaddr *)&serveraddr, addrlen) == -1)
-        {
-            perror("fail to sendto");
-            exit(1);
-        }
-    }
-
-    //第四步：关闭套接字文件描述符
-    close(sockfd);
-    return 0;
-}
-/*int8_t net_receive(uint8_t * data,uint32_t size)     //接受数据包
-{
-
-}*/
-
-/*PAK*/
-int get_length(char *str)       //获得字符串长度
-{
-    char *p = str;
-    int count = 0;
-    while (*p++ != '\0')
-    {
-        count++;
-    }
-    return count+1;
-}
-void show_data(char *str)       //展示数据包
-{
-    char *p = str;//uint8_t a=255;
-    while (*p !=(char)PAK_DATA_END)
-    {
-        if(*p==(char)PAK_PAR_DATA_END)printf("*");
-        else if(*p=='\0')printf(" ");
-        else printf("%c",*p);
-        p++;
-    }
-    printf("!\n");
-}
-void show_d(uint8_t *data,uint32_t datasize)          //展示par_data
-{
-    uint8_t *p = data,i=0;
-    while (i!=datasize)
-    {
-        printf("%d",*p);
-        p++;
-        i++;
-    }
-}
-
-int16_t du_pak_size(uint8_t *data)
-{
-    uint8_t *p = data,i=1;
-    while (*p!=PAK_DATA_END)
-    {
-        p++;
-        i++;
-    }
-    return i;
-}
-
-int8_t net_send_pak(netdev_id_t netdev_id,XLpak * pak)      //将参数打包（基本完成）
+/*-----------------------------------------------------------------------------------------------*/
+/*数据包打包和解包*/
+/*将网络包解包*/
+int net_send_pak(netdev_id_t netdev_id,XLpak * pak)      //将参数打包
 {
     //度量大小
     uint32_t datasize=0;
     str * dev_name=netdev_get(netdev_id)->name;
     str * sig_name=pak->name;
-    datasize+=get_length(dev_name);
-    datasize+=get_length(sig_name);
+    datasize+=strlen(dev_name)+1;
+    datasize+=strlen(sig_name)+1;
     if(pak->sig_par_h!=NULL)
     {
         XLsig_par * par_now=pak->sig_par_h;
         while(par_now!=NULL)
         {
-            datasize+=get_length(par_now->name)+1;
+            datasize+=strlen(par_now->name)+2;  //
             if(par_now->data!=NULL) datasize+=par_now->datasize;
             par_now=par_now->next;
         }
     }
     datasize++;
-    //创建数据
-    uint8_t * data_p=malloc(datasize);
-    uint8_t * data;
-
-    data=data_p;
-    *data_p=(uint8_t)*dev_name;
-    strcpy((char *)data_p,(char *)dev_name);
-    data_p+=get_length(dev_name);           //写入设备名
-
-    strcpy((char *)data_p,(char *)sig_name);
-    data_p+=get_length(sig_name);           //写入信号名
+    //buf的制作
+    uint8_t *buf=malloc(sizeof(uint8_t)*datasize),a;
+    int p=0;
+    add_data(buf,&p,dev_name,strlen(dev_name)+1);
+    add_data(buf,&p,sig_name,strlen(sig_name)+1);
     XLsig_par * par_now=pak->sig_par_h;
-    int a=0; //调试
-    while(par_now!=NULL)
-    {
-        a++; //调试
-        strcpy((str *)data_p,par_now->name);
-        data_p+=get_length(par_now->name);      //写入参数名
-        if(par_now->data!=NULL)
+    a=PAK_PAR_DATA_END;
+    while (par_now!=NULL) {
+       add_data(buf,&p,par_now->name,strlen(par_now->name)+1);
+        if(par_now->datasize>0)
         {
-            //写入参数
-            uint8_t * par_data=par_now->data;
-            for(uint8_t i=0;i<par_now->datasize;i++)
-            {
-                *data_p=*par_data;
-                par_data++;
-                data_p++;
-            }
+           add_data(buf,&p,par_now->data,par_now->datasize);
+           add_data(buf,&p,&a,1);
         }
-        *data_p=PAK_PAR_DATA_END;
-        data_p++;
-        par_now=par_now->next;      //写入参数尾部
+        par_now=par_now->next;
     }
-    *data_p=PAK_DATA_END;                //写入尾部
-
+    a=PAK_DATA_END;
+    buf=add_data(buf,&p,&a,1);
     //调试
-    printf("--------------send------------------\n");
-    printf("b=%d",a);
-    printf("data is:%s\n",data);
-    printf("showdata is:");
-    show_data((str *)data);
-    printf("sizeof pak:%d\n",datasize);
-    net_send(&netdev_get(netdev_id)->net,data,datasize);        //发送DATA
+    show_buf(buf);
+    //dev_id_t dev_id;
+    //XLpak pak_rev;
+    //net_get_pak(buf,datasize,&dev_id,&pak_rev);
+    //发送buf
+    if(netdev_get(netdev_id)==NULL)return 0;
+    net_send(&netdev_get(netdev_id)->net,buf,datasize);
     return 1;
 }
 
-
-int8_t net_get_pak(uint8_t * data,uint32_t datasize,netdev_id_t * netdev_id,XLpak * pake)
+/*将网络包解包*/
+int net_get_pak(uint8_t * data,uint32_t datasize,dev_id_t * dev_id,XLpak * pak)   //依托答辩
 {
-    //uint8_t * data
-    uint8_t size=0;
-    //uint32_t datasize;
-    //net_receive(data,&datasize);
-    //uint8_t * data=malloc(sizeof(uint8_t)*64);
+    /*uint8_t size=0;
     uint8_t *data_p=data,a=0;
     str * dev_name=malloc(sizeof(str)*DEVICE_NAME_LENGTH),*dev_name_p=dev_name;
     str * sig_name=malloc(sizeof(str)*sig_NAME_LENGTH),*sig_name_p=sig_name;
@@ -449,5 +497,43 @@ int8_t net_get_pak(uint8_t * data,uint32_t datasize,netdev_id_t * netdev_id,XLpa
     if(pak->name==""){printf("sig fail!");return 0;}
     *pake=*pak; //参数传递
     free(pak);
+    return 1;*/
+    int p=0,a=0;
+    XLpak pake;
+    memset(&pake,0,sizeof(pake));
+    //XLsig_par * par_now=pake.sig_par_h;
+
+    str * device_name,*signal_name;
+    if((device_name=(str *)get_str(data,&p,datasize))==NULL)return 0;
+    printf("str:%s\n",device_name);
+    if((signal_name=(str *)get_str(data,&p,datasize))==NULL)return 0;
+    printf("str:%s\n",signal_name);
+    strcpy(pake.name,signal_name);
+    str * s;
+    while (p<(int)datasize-1)
+    {
+        if(a==0)
+        {
+            if((s=get_str(data,&p,datasize))==NULL)return 0;
+            printf("par_str:%s\n",s);
+            pak_add_par(&pake,s);
+            a=1;
+        }
+        else if(a==1){
+            int size=0;
+            uint8_t *da;
+            if((da=get_par_data(data,&p,&size,datasize))==NULL)return 0;
+            printf("par_data:%x%x%x%x",*da,*da+1,*da+2,*da+3);  //
+            pak_set_data(&pake,s,da,size);
+            a=0;
+        }
+    }
+    dev_id_t  nd_id;
+    nd_id=dev_get_byname(device_name);
+    if(nd_id==0)return 0;
+    *dev_id=nd_id;
+    printf("\ndev:%d\n",nd_id); //
+    *pak=pake;
+    printf("end\n");    //
     return 1;
 }

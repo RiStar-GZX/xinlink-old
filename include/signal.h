@@ -47,24 +47,24 @@ sig_id_t sig_get_byname(str * name);
 sig_id_t sig_create(str * name);           //创建信号
 sig_id_t sig_del(sig_id_t sig_id);   //删除信号
 
-int8_t sig_set_name(sig_id_t sig_id,str * str);          //设置信号的名字(在一个设备中唯一)
+int sig_set_name(sig_id_t sig_id,str * str);          //设置信号的名字(在一个设备中唯一)
 str * sig_get_name(sig_id_t sig_id);						//获得信号名字
 dev_id_t sig_get_dev(sig_id_t sig_id);					//信号操作点获取设备操作点
 
 void sig_list(void) ;
 
-int8_t sig_add_par(sig_id_t sig_id,str * name);			//信号设置参数
-int8_t sig_del_par(sig_id_t sig_id,str * name);			//信号删除参数
+int sig_add_par(sig_id_t sig_id,str * name);			//信号设置参数
+int sig_del_par(sig_id_t sig_id,str * name);			//信号删除参数
 
-int8_t sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak);     //触发信号
-int8_t sig_set_slot(sig_id_t sig_id,FUNC slot);          //设置信号槽
-int8_t sig_slot(sig_id_t sig_id,XLpak * pak);                  //启动信号槽
+int sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak);     //触发信号
+int sig_set_slot(sig_id_t sig_id,FUNC slot);          //设置信号槽
+int sig_slot(sig_id_t sig_id,XLpak * pak);                  //启动信号槽
 uint8_t * sigpar_get_data(sig_id_t sig_id,str * name,uint32_t * datasize);
-int8_t sigpar_set_data(sig_id_t sig_id,str * name,par_data_t * data,uint32_t datasize);
+int sigpar_set_data(sig_id_t sig_id,str * name,par_data_t * data,uint32_t datasize);
 
-int8_t pak_del_par(XLpak *  pak,str * name);
-int8_t pak_add_par(XLpak * pak,str * name);
-int8_t pak_set_data(XLpak * pak,str * name,uint8_t * data,uint32_t datasize);
+int pak_del_par(XLpak *  pak,str * name);
+int pak_add_par(XLpak * pak,str * name);
+int pak_set_data(XLpak * pak,str * name,void * data,uint32_t datasize);
 uint8_t * pak_get_data(XLpak * pak,str * name,uint32_t * datasize);
 #endif // sig_H
 
