@@ -14,14 +14,15 @@
 #include <xinlink.h>
 #define num 10
 
-/*
-int my_slot(sig_id_t sig_id,XLpak * pak)
+
+/*int my_slot(sig_id_t sig_id,XLsig_pak * pak)
 {
-        //printf("\n\n\nThis is sig solt!\n\n\n");
+        printf("\n\n\nThis is sig solt!\n\n\n");
         uint32_t datasize1,* data1=NULL;
         data1=pak_get_data(pak,"x",&datasize1);
         uint32_t datasize2,* data2=NULL;
         data2=pak_get_data(pak,"y",&datasize2);
+        if(data1==NULL||data2==NULL)return 0;
         char s[50];
         sprintf(s,"xdotool mousemove %d %d\n",*data1,*data2);
         system(s);
@@ -30,7 +31,7 @@ int my_slot(sig_id_t sig_id,XLpak * pak)
 }
 int main()
 {
-    net_init();
+    xinlink_init();
     dev_id_t dev=dev_create("device");
     sig_id_t sig=sig_create("signal");
     dev_set_sig(dev,sig);
@@ -39,57 +40,36 @@ int main()
     return 0;
 }*/
 
-/*int main() {
-    netdev_id_t netdev;
-    netdev=netdev_create("device");
-    XLpak pak;
-    pak.sig_par_h=NULL;
-    struct ip ip;
-    ip.net_ipv4=inet_addr("192.168.1.23");
-    netdev_set_net(netdev,ip,8181,NETWORK_IPV4);
-    strcpy(pak.name,"signal");
-    pak_add_par(&pak,"x");
-    pak_add_par(&pak,"y");
-    while (1) {
-        system("xdotool getmouselocation > a");
-        FILE * file;
-        file=fopen("./a","r+");
-        fseek(file,2,SEEK_SET);
-        int x=0,y=0,t;
-        while((t=getc(file))!=32)x=x*10+(t-48);
-        fseek(file,2,SEEK_CUR);
-        while((t=getc(file))!=32)y=y*10+(t-48);
-        system("clear");
-        pak_set_data(&pak,"x",&x,sizeof(x));
-        pak_set_data(&pak,"y",&y,sizeof(y));
-        fclose(file);
-        system("clear");
-        net_send_pak(netdev,&pak);
-    }
-    return 0;
-}*/
-
 int main()
 {
-    dev_id_t dev=dev_create("device");
-    netdev_id_t netdev=netdev_create("device");
-    XLpak pak;
-    strcpy(pak.name,"signal");
-    pak_add_par(&pak,"x");
-    pak_add_par(&pak,"y");
-    int x=0x30313233;
-    int y=x;
-    pak_set_data(&pak,"x",&x,sizeof(x));
-    pak_set_data(&pak,"y",&y,sizeof(y));
-    ip ip;
-    ip.net_ipv4=inet_addr("192.168.1.23");
-    netdev_set_net(netdev,ip,8181,NETWORK_IPV4);
-    while(1)
-    {
-        net_send_pak(netdev,&pak);
-        sleep(1);
+    xinlink_init();
+    while (1){
+        int s;
+        net_send_core();
+        scanf("%d",&s);
     }
+        while (1);
     return 0;
 }
 
-
+/*int main()
+{
+    XLnet net;
+    net.ip.net_ipv4=inet_addr("192.168.1.23");
+    net.port=8088;
+    core_init();
+    while (1) {
+        int a;
+        scanf("%d",&a);
+        if(a==0)
+        {
+            core_create(&net);
+        }
+        else {
+            core_del(a);
+        }
+        core_show();
+        system("clear");
+    }
+    return 0;
+}*/

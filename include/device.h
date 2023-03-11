@@ -38,20 +38,6 @@
 #define DEV_TYPE_LO 0
 #define DEV_TYPE_NET 1
 
-/**
-
- * 函数:       // 函数名称
- * 描述:    // 函数功能、性能等的描述
- * 输出:          // 被本函数调用的函数清单
- * 返回 By:      // 调用本函数的函数清单
- * Table Accessed: // 被访问的表(此项仅对于牵扯到数据库操作的程序)
- * Table Updated:  // 被修改的表(此项仅对于牵扯到数据库操作的程序)
- * Input:          // 输入参数说明，包括每个参数的作
-                  // 用、取值说明及参数间关系。
- * Output:         // 对输出参数的说明。
- * Return:         // 函数返回值的说明
- * 其他s:         // 其它说明
- */
 typedef struct ip{
     uint32_t net_ipv4;
     //uint8_t net_ipv6[6];

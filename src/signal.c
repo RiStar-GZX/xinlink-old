@@ -262,7 +262,7 @@ int sigpar_set_data(sig_id_t sig_id,str * name,par_data_t * data,uint32_t datasi
     return 0;
 }
 
-int sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak)
+int sig_send(dev_id_t dev_id,str * sig_name,XLsig_pak * pak)
 {
     if(dev_get(dev_id)!=NULL)
     {
@@ -272,7 +272,7 @@ int sig_send(dev_id_t dev_id,str * sig_name,XLpak * pak)
     else return 0;
 }
 
-int sig_slot(sig_id_t sig_id,XLpak * pak)
+int sig_slot(sig_id_t sig_id,XLsig_pak * pak)
 {
     XLsig *sig;
     sig=sig_get(sig_id);
@@ -297,7 +297,7 @@ int sig_set_slot(sig_id_t sig_id,FUNC slot)
 }
 
 
-int pak_add_par(XLpak * pak,str * name) {			//添加信号参数（信号操作点，参数名）
+int pak_add_par(XLsig_pak * pak,str * name) {			//添加信号参数（信号操作点，参数名）
 
         if(pak->sig_par_h!=NULL) {							//信号有参数
                 XLsig_par * par_now=pak->sig_par_h;
@@ -323,7 +323,7 @@ int pak_add_par(XLpak * pak,str * name) {			//添加信号参数（信号操作�
         }
 }
 
-int pak_del_par(XLpak *  pak,str * name) {			//删除信号函数（信号操作点，信号名）
+int pak_del_par(XLsig_pak *  pak,str * name) {			//删除信号函数（信号操作点，信号名）
         if(pak->sig_par_h==NULL) return 0;
         XLsig_par * par_now=pak->sig_par_h;
         XLsig_par * par_now_front=NULL;
@@ -355,7 +355,7 @@ int pak_del_par(XLpak *  pak,str * name) {			//删除信号函数（信号操作
         }
 }
 
-int pak_set_data(XLpak * pak,str * name,void * data,uint32_t datasize)
+int pak_set_data(XLsig_pak * pak,str * name,void * data,uint32_t datasize)
 {
     XLsig_par * par_now=pak->sig_par_h;
     if(par_now!=NULL)
@@ -373,7 +373,7 @@ int pak_set_data(XLpak * pak,str * name,void * data,uint32_t datasize)
     return 0;
 }
 
-uint8_t * pak_get_data(XLpak * pak,str * name,uint32_t * datasize)
+uint8_t * pak_get_data(XLsig_pak * pak,str * name,uint32_t * datasize)
 {
     if(pak==NULL||strcmp(name,"")==0)return 0;
     XLsig_par * sigpar_now=pak->sig_par_h;

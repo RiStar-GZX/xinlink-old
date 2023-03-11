@@ -8,7 +8,9 @@
 #include<network.h>
 #include<stdio.h>
 #include<stdlib.h>
+#include<core.h>
 #include<link.h>
 
+void xinlink_init(void);
 
 #endif // XINLINK_H
