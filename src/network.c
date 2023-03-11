@@ -98,13 +98,12 @@ void show_ipv4(void * buf)
 {
     if(buf==NULL){printf("error ip\n");return 0;}
     uint8_t * buf_p=buf;
-    printf("ipv4 is:");
+    printf("ip地址:");
     for(int i=0;i<4;i++)
     {
         printf("%d.",*buf_p);
         buf_p++;
     }
-    printf("\n");
 }
 
 void show_par_data(uint8_t *data,uint32_t datasize)          //展示par_data(调试用)
@@ -219,9 +218,8 @@ int net_receive(void)   //接受网络数据包的线程
                 perror("fail to recvfrom");
                 exit(1);
             }
-            printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
-            //show_buf(data);
-            printf("\ndata is:%d\n",*data);
+            //printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
+            //printf("\ndata is:%d\n",*data);
             if(*data==PAK_MODE_SIGNAL)
             {
                 system("clear");
@@ -233,18 +231,21 @@ int net_receive(void)   //接受网络数据包的线程
                 }
             }
             else if (*data==PAK_MODE_CONNECT) {
-                printf("connect!\n");
+
                 XLnet net_rev;
                 net_get_core(data,&net_rev);
-                printf("here\n");
-                show_ipv4(&net_rev.ip.net_ipv4);
-                printf("port:%d\n",net_rev.port);
+
                 if(net_rev.ip.net_ipv4!=core_get(1)->net.ip.net_ipv4)
+                {
+                    printf("对方连接请求:");
+                    show_ipv4(&net_rev.ip.net_ipv4);
+                    printf("端口:%d\n",net_rev.port);
                     net_connect(&net_rev,PAK_MODE_ACCEPT_CONNECT);
+                }
                 core_create(&net_rev);
             }
             else if (*data==PAK_MODE_ACCEPT_CONNECT) {
-                printf("accept\n");
+                printf("同意对方的连接请求!\n");
                 XLnet net_rev;
                 if(net_rev.ip.net_ipv4!=core_get(1)->net.ip.net_ipv4)
                     net_get_core(data,&net_rev);
@@ -288,21 +289,20 @@ int net_broadcast_receive(void)
             perror("fail to recvfrom");
             exit(1);
         }
-        //printf("[%s ‐ %d]: %s\n", inet_ntoa(sendaddr.sin_addr), ntohs(sendaddr.sin_port), data);
 
-        //show_buf(data);
         XLnet net_rev;
         net_get_core(data,&net_rev);
         uint32_t ip_lo=core_get(1)->net.ip.net_ipv4;
 
+        printf("收到广播信号:");
         show_ipv4(&net_rev.ip.net_ipv4);
-        printf("port is:%d\n",net_rev.port);
+        printf("端口:%d\n",net_rev.port);
+
         if(net_rev.ip.net_ipv4!=ip_lo&&*data==PAK_MODE_SEARCH){
+
             net_connect(&net_rev,PAK_MODE_CONNECT); //in common
         }
-        if(net_rev.ip.net_ipv4!=ip_lo&&*data==PAK_MODE_ACCEPT_CONNECT){
-            core_create(&net_rev);
-        }
+        else printf("广播发送者是自己\n");
     }
     //|mode|ip|port|end|
     return NULL;
@@ -310,6 +310,7 @@ int net_broadcast_receive(void)
 /*网络数据广播*/
 int net_broadcast_send (uint16_t port,void *buf,uint32_t bufsize)
 {
+
      int sockfd;
      struct sockaddr_in broadcataddr; //服务器网络信息结构体
      socklen_t addrlen = sizeof(broadcataddr);
@@ -328,7 +329,7 @@ int net_broadcast_send (uint16_t port,void *buf,uint32_t bufsize)
      }
      //第三步:填充广播信息结构体
      broadcataddr.sin_family = AF_INET;
-     broadcataddr.sin_addr.s_addr =inet_addr("255.255.255.255");//(in_addr_t)net->ip.net_ipv4; //192.168.3.255 255.255.255.255
+     broadcataddr.sin_addr.s_addr =inet_addr("255.255.255.255"); //192.168.3.255 255.255.255.255
      broadcataddr.sin_port = htons(port);
      //第四步:进行通信
      if(sendto(sockfd, buf,bufsize, 0, (struct sockaddr *)&broadcataddr, addrlen) < 0)
@@ -336,7 +337,7 @@ int net_broadcast_send (uint16_t port,void *buf,uint32_t bufsize)
          perror("fail to sendto");
          return 0;
      }
-     printf("broadcast success!\n");
+     printf("广播成功!\n");
      //第四步：关闭套接字文件描述符
      close(sockfd);
      return 0;
@@ -440,6 +441,7 @@ int net_send_core(void)
     if(add_data(buf,&p,&net.port,sizeof(uint16_t))<=0)return 0;
     t=PAK_DATA_END;
     if(add_data(buf,&p,&t,1)<=0)return 0;
+    printf("主机发送广播\n");
     net_broadcast_send(8088,buf,bufsize);
     return 1;
 }
@@ -469,7 +471,7 @@ int net_connect(XLnet *net,int mode)
         net_lo.ip.net_ipv4=core_get(1)->net.ip.net_ipv4;
         uint8_t *buf=malloc(sizeof(uint8_t)*(1+4+2+1)),bufsize=1+4+2+1; //|mode|ip|port|end|
         int p=0;
-        uint8_t t=PAK_MODE_SEARCH;
+        uint8_t t=PAK_MODE_CONNECT;
         if(add_data(buf,&p,&t,1)<=0)return 0;
         if(add_data(buf,&p,&net_lo.ip.net_ipv4,sizeof(uint32_t))<=0)return 0;
         if(add_data(buf,&p,&net_lo.port,sizeof(uint16_t))<=0)return 0;
@@ -490,7 +492,7 @@ int net_connect(XLnet *net,int mode)
         if(add_data(buf,&p,&net_lo.port,sizeof(uint16_t))<=0)return 0;
         t=PAK_DATA_END;
         if(add_data(buf,&p,&t,1)<=0)return 0;
-        show_buf(buf);
+        //show_buf(buf);
         net_send(net,buf,bufsize);
     }
     return 1;

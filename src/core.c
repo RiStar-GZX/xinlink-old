@@ -34,10 +34,10 @@ core_id_t core_create(XLnet * net)
 {
     if(core_check_repeat(net)!=1)
     {
-        printf("repeat\n");
+        printf("创建了一个重复的核心!\n");
         return  0;
     }
-    printf("core create\n");
+    printf("成功创建了一个核心!\n");
     if(net==NULL)return 0;
     if(net->ip.net_ipv4==0||net->port==0)return 0;
     extern XLCore core_local;
