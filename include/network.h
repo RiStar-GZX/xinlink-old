@@ -25,14 +25,13 @@
 #define PAK_MAX_SIZE 256
 
 int add_data(void * pak,int * p,void * data,int datasize);
-
 void show_par_data(uint8_t *data,uint32_t datasize);
 int du_buf_size(uint8_t *data);
 int net_init(void);
 int net_receive(void);
 int net_send(XLnet * net,uint8_t * data,uint32_t size);
 int net_send_sig(netdev_id_t netdev_id,XLsig_pak * pak);
-int net_get_sig(uint8_t * data,uint32_t datasize,dev_id_t * dev_id,XLsig_pak * pak);
+int net_get_sig(uint8_t * data,dev_id_t * dev_id,XLsig_pak * pak);
 int net_broadcast_send (uint16_t port,void *buf,uint32_t bufsize);
 int net_broadcast_receive(void);
 int net_send_core(void);

@@ -81,17 +81,18 @@ void * get_par_data(void *buf,int *p,int * datasize,int maxsize)
      return data;
 }
 
-void show_buf(uint8_t *data)       //展示数据包(调试用)
+void show_buf(uint8_t *data,int size)       //展示数据包(调试用)
 {
-    char *p = data;//uint8_t a=255;
-    while (*p !=(char)PAK_DATA_END)
+    int i=0;
+    char *p = data;
+    while (i<=size)
     {
         if(*p==(char)PAK_PAR_DATA_END)printf("*");
         else if(*p=='\0')printf(" ");
         else printf("%c",*p);
         p++;
+        i++;
     }
-    printf("!\n");
 }
 
 void show_ipv4(void * buf)
@@ -219,13 +220,13 @@ int net_receive(void)   //接受网络数据包的线程
                 exit(1);
             }
             //printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
-            //printf("\ndata is:%d\n",*data);
             if(*data==PAK_MODE_SIGNAL)
             {
                 system("clear");
                 netdev_id_t id;
                 XLsig_pak pak;
-                if(net_get_sig(data,26/*du_buf_size(data)*/,&id,&pak)<=0)printf("pak error!\n");  //从数据包中提取出pak
+
+                if(net_get_sig(data,&id,&pak)<=0)printf("pak error!\n");  //从数据包中提取出pak
                 else{
                     sig_send(id,pak.name,&pak);
                 }
@@ -352,73 +353,73 @@ int net_broadcast_send (uint16_t port,void *buf,uint32_t bufsize)
 int net_send_sig(netdev_id_t netdev_id,XLsig_pak * pak)      //将参数打包
 {
     //度量大小
-    uint32_t datasize=1;
+    uint16_t buf_size=1+2;    //|mode(u8)|size(u16)|
     str * dev_name=netdev_get(netdev_id)->name;
     str * sig_name=pak->name;
-    datasize+=strlen(dev_name)+1;
-    datasize+=strlen(sig_name)+1;
+    buf_size+=strlen(dev_name)+1;
+    buf_size+=strlen(sig_name)+1;
     if(pak->sig_par_h!=NULL)
     {
         XLsig_par * par_now=pak->sig_par_h;
         while(par_now!=NULL)
         {
-            datasize+=strlen(par_now->name)+2;  //
-            if(par_now->data!=NULL) datasize+=par_now->datasize;
+            buf_size+=strlen(par_now->name)+2;  //
+            if(par_now->data!=NULL) buf_size+=par_now->datasize;
             par_now=par_now->next;
         }
     }
-    datasize++;
     //buf的制作
-    uint8_t *buf=malloc(sizeof(uint8_t)*datasize),a;
+    uint8_t *buf=malloc(sizeof(uint8_t)*buf_size);
     int p=0;
     uint8_t mode=PAK_MODE_SIGNAL;
     add_data(buf,&p,&mode,sizeof(uint8_t));
+    add_data(buf,&p,&buf_size,sizeof(uint16_t));    //size
     add_data(buf,&p,dev_name,strlen(dev_name)+1);
     add_data(buf,&p,sig_name,strlen(sig_name)+1);
     XLsig_par * par_now=pak->sig_par_h;
-    a=PAK_PAR_DATA_END;
+    uint8_t t=PAK_PAR_DATA_END;
     while (par_now!=NULL) {
-       add_data(buf,&p,par_now->name,strlen(par_now->name)+1);
+        add_data(buf,&p,par_now->name,strlen(par_now->name)+1);
         if(par_now->datasize>0)
         {
            add_data(buf,&p,par_now->data,par_now->datasize);
-           add_data(buf,&p,&a,1);
+           add_data(buf,&p,&t,1);
         }
         par_now=par_now->next;
     }
-    a=PAK_DATA_END;
-    add_data(buf,&p,&a,1);
-    show_buf(buf);//调试
+    show_buf(buf,buf_size);//调试
     if(netdev_get(netdev_id)==NULL)return 0;
-    net_send(&netdev_get(netdev_id)->net,buf,datasize);
+    net_send(&netdev_get(netdev_id)->net,buf,buf_size);
     return 1;
 }
 
 /*将网络包解包*/
 
-int net_get_sig(uint8_t * data,uint32_t datasize,dev_id_t * dev_id,XLsig_pak * pak)
+int net_get_sig(uint8_t * buf,dev_id_t * dev_id,XLsig_pak * pak)
 {
     int p=1,a=0;    //p=1:第一个字节是模式，跳过
+    uint16_t buf_size;
+    if((buf_size=*(uint16_t *)get_data(buf,&p,sizeof(uint16_t)))==NULL)return 0;
     XLsig_pak pake;
     memset(&pake,0,sizeof(pake));
-    printf("paksize:%d\n\n",datasize);
+    printf("paksize:%d\n\n",buf_size);
     str * device_name,*signal_name;
-    if((device_name=(str *)get_str(data,&p,datasize))==NULL)return 0;
-    if((signal_name=(str *)get_str(data,&p,datasize))==NULL)return 0;
+    if((device_name=(str *)get_str(buf,&p,(uint32_t)buf_size))==NULL)return 0;
+    if((signal_name=(str *)get_str(buf,&p,(uint32_t)buf_size))==NULL)return 0;
     strcpy(pake.name,signal_name);
     str * s;
-    while (p<(int)datasize-1)
+    while (p<(int)buf_size-1)
     {
         if(a==0)
         {
-            if((s=get_str(data,&p,datasize))==NULL)return 0;
+            if((s=get_str(buf,&p,buf_size))==NULL)return 0;
             pak_add_par(&pake,s);
             a=1;
         }
         else if(a==1){
             int size=0;
             uint8_t *da;
-            if((da=get_par_data(data,&p,&size,datasize))==NULL)return 0;
+            if((da=get_par_data(buf,&p,&size,buf_size))==NULL)return 0;
             pak_set_data(&pake,s,da,size);
             a=0;
         }
@@ -497,7 +498,6 @@ int net_connect(XLnet *net,int mode)
         if(add_data(buf,&p,&net_lo.port,sizeof(uint16_t))<=0)return 0;
         t=PAK_DATA_END;
         if(add_data(buf,&p,&t,1)<=0)return 0;
-        //show_buf(buf);
         net_send(net,buf,bufsize);
     }
     return 1;
