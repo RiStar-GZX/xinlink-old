@@ -36,6 +36,7 @@ typedef uint16_t  rel_mod_t;
 typedef uint16_t  i_t;
 typedef uint16_t  dev_id_t;
 typedef uint16_t  sig_id_t;
+typedef uint16_t core_id_t;
 typedef uint16_t  netdev_id_t;
 
 //typedef uint16_t  dev_type_t;

@@ -73,7 +73,7 @@ typedef struct XLdev {       //设备结构体
     struct XLdev_sig_list * sig_h;    //包含信号的信号表头
     /*id*/
     dev_id_t id;
-    struct XLdev * next_id;
+    struct XLdev * next;
 } XLdev;
 
 typedef struct XLnetdev {               //网络设备
@@ -83,7 +83,7 @@ typedef struct XLnetdev {               //网络设备
     struct XLnet net;
     /*id*/
     netdev_id_t id;
-    struct XLnetdev * next_id;
+    struct XLnetdev * next;
 } XLnetdev;
 
 typedef struct XLdev_sig_list {          //信号表

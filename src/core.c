@@ -15,9 +15,28 @@ int core_init(void)
 XLCore * core_get(core_id_t core_id)
 {
     extern XLCore core_local;
-    if(core_id==1)return &core_local;
+    XLCore *core_now=&core_local;
+    for(;;)
+    {
+        if(core_now->id==core_id)return core_now;
+        if(core_now->next==NULL)return NULL;
+        core_now=core_now->next;
+    }
     return NULL;
 }
+XLCore * core_get_by_ip(uint32_t ipv4)
+{
+    extern XLCore core_local;
+    XLCore *core_now=&core_local;
+    for(;;)
+    {
+        if(core_now->net.ip.net_ipv4==ipv4)return core_now;
+        if(core_now->next==NULL)return NULL;
+        core_now=core_now->next;
+    }
+    return NULL;
+}
+
 int core_check_repeat(XLnet * net)
 {
     if(net==NULL)return 0;

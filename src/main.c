@@ -15,7 +15,7 @@
 #define num 10
 
 
-/*int my_slot(sig_id_t sig_id,XLsig_pak * pak)
+int my_slot(sig_id_t sig_id,XLsig_pak * pak)
 {
         printf("\n\n\nThis is sig solt!\n\n\n");
         uint32_t datasize1,* data1=NULL;
@@ -32,44 +32,44 @@
 int main()
 {
     xinlink_init();
-    dev_id_t dev=dev_create("device");
-    sig_id_t sig=sig_create("signal");
+    dev_id_t dev=dev_create("mouse");
+    sig_id_t sig=sig_create("pos");
     dev_set_sig(dev,sig);
     sig_set_slot(sig,my_slot);
-    while (1);
-    return 0;
-}*/
-
-int main()
-{
-    xinlink_init();
     while (1){
         int s;
-        net_send_core();
         scanf("%d",&s);
-    }
-        while (1);
+        if(s==1)net_send_core();
+        else if(s==2)net_send_dev_info(2);
+        else if(s==3&&netdev_get_byname("mouse")!=0){
+            netdev_id_t netdev=0;
+            netdev=netdev_get_byname("mouse");
+            if(netdev!=0)
+            {
+                XLsig_pak pak;
+                pak.sig_par_h=NULL;
+                strcpy(pak.name,"pos");
+                pak_add_par(&pak,"x");
+                pak_add_par(&pak,"y");
+                while (1) {
+                    system("xdotool getmouselocation > a");
+                    FILE * file;
+                    file=fopen("./a","r+");
+                    fseek(file,2,SEEK_SET);
+                    int x=0,y=0,t;
+                    while((t=getc(file))!=32)x=x*10+(t-48);
+                    fseek(file,2,SEEK_CUR);
+                    while((t=getc(file))!=32)y=y*10+(t-48);
+                    system("clear");
+                    printf("x:%d y:%d\n",x,y);
+                    pak_set_data(&pak,"x",&x,sizeof(x));
+                    pak_set_data(&pak,"y",&y,sizeof(y));
+                    fclose(file);
+                    net_send_sig(netdev,&pak);
+                }
+            }
+        }
+        else printf("无法进入,没有网络设备\n");
+   }
     return 0;
 }
-
-/*int main()
-{
-    XLnet net;
-    net.ip.net_ipv4=inet_addr("192.168.1.23");
-    net.port=8088;
-    core_init();
-    while (1) {
-        int a;
-        scanf("%d",&a);
-        if(a==0)
-        {
-            core_create(&net);
-        }
-        else {
-            core_del(a);
-        }
-        core_show();
-        system("clear");
-    }
-    return 0;
-}*/

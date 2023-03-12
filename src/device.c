@@ -34,8 +34,8 @@ XLdev * dev_get(dev_id_t dev_id) {
                 if(dev_now->id==dev_id)
                         return dev_now;
 
-                else if(dev_now->next_id!=NULL)
-                        dev_now=dev_now->next_id;
+                else if(dev_now->next!=NULL)
+                        dev_now=dev_now->next;
                 else return NULL;
         }
 }
@@ -54,7 +54,7 @@ dev_id_t dev_create(str * name) {
         if(dev_head==NULL) {
                 dev_head=dev_new;
                 dev_new->id=1;
-                dev_new->next_id=NULL;
+                dev_new->next=NULL;
                 strcpy(dev_new->name,name);
                 return dev_new->id;
         } else if(dev_head->id>1) {
@@ -62,7 +62,7 @@ dev_id_t dev_create(str * name) {
                 XLdev * temp;
                 temp=dev_head;
                 dev_head=dev_new;
-                dev_new->next_id=temp;
+                dev_new->next=temp;
                 strcpy(dev_new->name,name);
                 return dev_new->id;
         } else {
@@ -71,23 +71,23 @@ dev_id_t dev_create(str * name) {
                 dev_now=dev_head;
 
                 for(;;) {
-                        if(dev_now->next_id==NULL)  {
+                        if(dev_now->next==NULL)  {
 
-                                dev_now->next_id=dev_new;
+                                dev_now->next=dev_new;
                                 dev_new->id=dev_now->id+1;
-                                dev_new->next_id=NULL;
+                                dev_new->next=NULL;
                                 strcpy(dev_new->name,name);
                                 return dev_new->id;
-                        } else if(dev_now->id+1<dev_now->next_id->id) { //如果下一个设备的操作符与当前设备操作符有空位
+                        } else if(dev_now->id+1<dev_now->next->id) { //如果下一个设备的操作符与当前设备操作符有空位
 
                                 dev_new->id=dev_now->id+1;            //新设备占据这个操作符
 
-                                dev_new->next_id=dev_now->next_id;       //设置新设备的下一个设备
+                                dev_new->next=dev_now->next;       //设置新设备的下一个设备
 
-                                dev_now->next_id=dev_new;             //设置现在设备的下一个设备为新设备
+                                dev_now->next=dev_new;             //设置现在设备的下一个设备为新设备
                                 strcpy(dev_new->name,name);
                                 return dev_new->id;
-                        } else  dev_now=dev_now->next_id;  //下一个
+                        } else  dev_now=dev_now->next;  //下一个
 
                 }
 
@@ -102,33 +102,33 @@ dev_id_t dev_del(dev_id_t dev_id) {
         for(;;) {
                 if(dev_now->id==dev_id) {            //如果有这个设备
                         if(dev_now==dev_head) {           //如果这个设备是设备头
-                                if(dev_head->next_id==NULL) {        //如果就剩这一个设备
+                                if(dev_head->next==NULL) {        //如果就剩这一个设备
                                         free(dev_head);                    //释放内存
                                         dev_head=NULL;                       //释放指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果还有其他设备
                                         XLdev * temp;
-                                        temp=dev_head->next_id;              //将设备头赋予下一个设备
+                                        temp=dev_head->next;              //将设备头赋予下一个设备
                                         free(dev_head);                    //释放内存
                                         dev_head=temp;
                                         return 1;                                 //成功返回
                                 }
                         } else {                                //如果这个设备不是头
-                                if(dev_now->next_id==NULL) {         //如果这个设备后面没有设备了
+                                if(dev_now->next==NULL) {         //如果这个设备后面没有设备了
                                         free(dev_now);                       //释放内存
-                                        dev_nowfront->next_id=NULL;          //删除前面一个设备的后端指针
+                                        dev_nowfront->next=NULL;          //删除前面一个设备的后端指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果没有设备了
                                         XLdev * temp;
-                                        temp=dev_now->next_id;
-                                        dev_nowfront->next_id=temp;          //前面一个设备的后端指针指向后一个设备
+                                        temp=dev_now->next;
+                                        dev_nowfront->next=temp;          //前面一个设备的后端指针指向后一个设备
                                         free(dev_now);                       //释放内存
                                         return 1;                                 //成功返回
                                 }
                         }
-                } else if(dev_now->next_id!=NULL) {          //如果不是要找的设备但后面还有设备
+                } else if(dev_now->next!=NULL) {          //如果不是要找的设备但后面还有设备
                         dev_nowfront=dev_now;                     //记录下当前操作设备的前一个设备
-                        dev_now=dev_now->next_id;                 //当前操作设备向后移动一个
+                        dev_now=dev_now->next;                 //当前操作设备向后移动一个
                 } else return 0;                               //如果既不是要找的设备后面也没有设备了，报错退出
         }
 }
@@ -178,7 +178,7 @@ void dev_list(void) {
         XLdev * dev_now=dev_head;
         while(dev_now!=NULL) {
                 printf("%d ",dev_now->id);
-                dev_now=dev_now->next_id;
+                dev_now=dev_now->next;
         }
 }
 
@@ -210,7 +210,7 @@ dev_id_t dev_get_byname(str * name)
         for(;;)
         {
             if(strcmp(name,dev_now->name)==0)return dev_now->id;
-            else if(dev_now->next_id!=NULL) dev_now=dev_now->next_id;
+            else if(dev_now->next!=NULL) dev_now=dev_now->next;
             else return 0;
         }
     }else{
@@ -275,8 +275,8 @@ XLnetdev * netdev_get(netdev_id_t netdev_id) {
                 if(netdev_now->id==netdev_id)
                         return netdev_now;
 
-                else if(netdev_now->next_id!=NULL)
-                        netdev_now=netdev_now->next_id;
+                else if(netdev_now->next!=NULL)
+                        netdev_now=netdev_now->next;
                 else return NULL;
         }
 }
@@ -295,7 +295,7 @@ netdev_id_t netdev_create(str *name) {
         if(netdev_head==NULL) {
                 netdev_head=netdev_new;
                 netdev_new->id=1;
-                netdev_new->next_id=NULL;
+                netdev_new->next=NULL;
                 strcpy(netdev_new->name,name);
                 return netdev_new->id;
         } else if(netdev_head->id>1) {
@@ -303,7 +303,7 @@ netdev_id_t netdev_create(str *name) {
                 XLnetdev * temp;
                 temp=netdev_head;
                 netdev_head=netdev_new;
-                netdev_new->next_id=temp;
+                netdev_new->next=temp;
                 strcpy(netdev_new->name,name);
                 return netdev_new->id;
         } else {
@@ -312,23 +312,23 @@ netdev_id_t netdev_create(str *name) {
                 netdev_now=netdev_head;
 
                 for(;;) {
-                        if(netdev_now->next_id==NULL)  {
+                        if(netdev_now->next==NULL)  {
 
-                                netdev_now->next_id=netdev_new;
+                                netdev_now->next=netdev_new;
                                 netdev_new->id=netdev_now->id+1;
-                                netdev_new->next_id=NULL;
+                                netdev_new->next=NULL;
                                 strcpy(netdev_new->name,name);
                                 return netdev_new->id;
-                        } else if(netdev_now->id+1<netdev_now->next_id->id) { //如果下一个设备的操作符与当前设备操作符有空位
+                        } else if(netdev_now->id+1<netdev_now->next->id) { //如果下一个设备的操作符与当前设备操作符有空位
 
                                 netdev_new->id=netdev_now->id+1;            //新设备占据这个操作符
 
-                                netdev_new->next_id=netdev_now->next_id;       //设置新设备的下一个设备
+                                netdev_new->next=netdev_now->next;       //设置新设备的下一个设备
 
-                                netdev_now->next_id=netdev_new;             //设置现在设备的下一个设备为新设备
+                                netdev_now->next=netdev_new;             //设置现在设备的下一个设备为新设备
                                 strcpy(netdev_new->name,name);
                                 return netdev_new->id;
-                        } else  netdev_now=netdev_now->next_id;  //下一个
+                        } else  netdev_now=netdev_now->next;  //下一个
 
                 }
 
@@ -343,33 +343,33 @@ netdev_id_t netdev_del(netdev_id_t dev_id) {
         for(;;) {
                 if(netdev_now->id==dev_id) {            //如果有这个设备
                         if(netdev_now==netdev_head) {           //如果这个设备是设备头
-                                if(netdev_head->next_id==NULL) {        //如果就剩这一个设备
+                                if(netdev_head->next==NULL) {        //如果就剩这一个设备
                                         free(netdev_head);                    //释放内存
                                         netdev_head=NULL;                       //释放指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果还有其他设备
                                         XLnetdev * temp;
-                                        temp=netdev_head->next_id;              //将设备头赋予下一个设备
+                                        temp=netdev_head->next;              //将设备头赋予下一个设备
                                         free(netdev_head);                    //释放内存
                                         netdev_head=temp;
                                         return 1;                                 //成功返回
                                 }
                         } else {                                //如果这个设备不是头
-                                if(netdev_now->next_id==NULL) {         //如果这个设备后面没有设备了
+                                if(netdev_now->next==NULL) {         //如果这个设备后面没有设备了
                                         free(netdev_now);                       //释放内存
-                                        netdev_nowfront->next_id=NULL;          //删除前面一个设备的后端指针
+                                        netdev_nowfront->next=NULL;          //删除前面一个设备的后端指针
                                         return 1;                                 //成功返回
                                 } else {                                //如果没有设备了
                                         XLnetdev * temp;
-                                        temp=netdev_now->next_id;
-                                        netdev_nowfront->next_id=temp;          //前面一个设备的后端指针指向后一个设备
+                                        temp=netdev_now->next;
+                                        netdev_nowfront->next=temp;          //前面一个设备的后端指针指向后一个设备
                                         free(netdev_now);                       //释放内存
                                         return 1;                                 //成功返回
                                 }
                         }
-                } else if(netdev_now->next_id!=NULL) {          //如果不是要找的设备但后面还有设备
+                } else if(netdev_now->next!=NULL) {          //如果不是要找的设备但后面还有设备
                         netdev_nowfront=netdev_now;                     //记录下当前操作设备的前一个设备
-                        netdev_now=netdev_now->next_id;                 //当前操作设备向后移动一个
+                        netdev_now=netdev_now->next;                 //当前操作设备向后移动一个
                 } else return 0;                               //如果既不是要找的设备后面也没有设备了，报错退出
         }
 }
@@ -379,7 +379,7 @@ void netdev_list(void) {
         XLnetdev * netdev_now=netdev_head;
         while(netdev_now!=NULL) {
                 printf("%d ",netdev_now->id);
-                netdev_now=netdev_now->next_id;
+                netdev_now=netdev_now->next;
         }
 }
 
@@ -393,7 +393,7 @@ netdev_id_t netdev_get_byname(str * name)
         for(;;)
         {
             if(strcmp(name,netdev_now->name)==0)return netdev_now->id;
-            else if(netdev_now->next_id!=NULL) netdev_now=netdev_now->next_id;
+            else if(netdev_now->next!=NULL) netdev_now=netdev_now->next;
             else return 0;
         }
     }else{

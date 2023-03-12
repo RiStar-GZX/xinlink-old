@@ -8,8 +8,8 @@ XLsig * sig_get(sig_id_t id) {    //获得信号结构体
         for(;;) {
                 if(sig_now->id==id)
                         return sig_now;
-                else if(sig_now->next_id!=NULL)
-                        sig_now=sig_now->next_id;
+                else if(sig_now->next!=NULL)
+                        sig_now=sig_now->next;
                 else return NULL;
         }
 }
@@ -22,7 +22,7 @@ sig_id_t sig_create(str * name) {                  //信号创建
         if(sig_head==NULL) {                             //如果没有信号
                 sig_head=sig_new;                         //新建第一个信号
                 sig_new->id=1;                               //操作点为1
-                sig_new->next_id=NULL;                       //无下一位
+                sig_new->next=NULL;                       //无下一位
                 strcpy(sig_new->name,name);
                 return sig_new->id;
         } else if(sig_head->id>1) {                      //如果信号头的操作点没有占到1
@@ -30,7 +30,7 @@ sig_id_t sig_create(str * name) {                  //信号创建
                 XLsig * temp;
                 temp=sig_head;
                 sig_head=sig_new;
-                sig_new->next_id=temp;
+                sig_new->next=temp;
                 strcpy(sig_new->name,name);
                 return sig_new->id;
         } else {                                            //其他情况
@@ -39,22 +39,22 @@ sig_id_t sig_create(str * name) {                  //信号创建
                 sig_now=sig_head;
 
                 for(;;) {
-                        if(sig_now->next_id==NULL)  {            //如果没有空位
+                        if(sig_now->next==NULL)  {            //如果没有空位
 
-                                sig_now->next_id=sig_new;
+                                sig_now->next=sig_new;
                                 sig_new->id=sig_now->id+1;
                                 strcpy(sig_new->name,name);
                                 return sig_new->id;;
-                        } else if(sig_now->id+1<sig_now->next_id->id) { //如果下一个设备的操作符与当前设备操作符有空位
+                        } else if(sig_now->id+1<sig_now->next->id) { //如果下一个设备的操作符与当前设备操作符有空位
 
                                 sig_new->id=sig_now->id+1;            //新设备占据这个操作符
 
-                                sig_new->next_id=sig_now->next_id;       //设置新设备的下一个设备
+                                sig_new->next=sig_now->next;       //设置新设备的下一个设备
 
-                                sig_now->next_id=sig_new;             //设置现在设备的下一个设备为新设备
+                                sig_now->next=sig_new;             //设置现在设备的下一个设备为新设备
                                 strcpy(sig_new->name,name);
                                 return sig_new->id;;
-                        } else  sig_now=sig_now->next_id;  //下一个
+                        } else  sig_now=sig_now->next;  //下一个
 
                 }
 
@@ -70,7 +70,7 @@ sig_id_t sig_del(sig_id_t sig_id) {
                 {
                         if(sig_now==sig_head) //如果这个设备是设备头
                         {
-                                if(sig_head->next_id==NULL) //如果就剩这一个设备
+                                if(sig_head->next==NULL) //如果就剩这一个设备
                                 {
                                     free(sig_head);                      //释放内存
                                     sig_head=NULL;                       //释放指针
@@ -79,7 +79,7 @@ sig_id_t sig_del(sig_id_t sig_id) {
                                 else                //如果还有其他设备
                                 {
                                     XLsig * temp;
-                                    temp=sig_head->next_id;              //将设备头赋予下一个设备
+                                    temp=sig_head->next;              //将设备头赋予下一个设备
                                     free(sig_head);                      //释放内存
                                     sig_head=temp;
                                     return 1;                               //成功返回
@@ -87,26 +87,26 @@ sig_id_t sig_del(sig_id_t sig_id) {
                         }
                         else                                //如果这个设备不是头
                         {
-                            if(sig_now->next_id==NULL)           //如果这个设备后面没有设备了
+                            if(sig_now->next==NULL)           //如果这个设备后面没有设备了
                             {
                                 free(sig_now);                       //释放内存
-                                sig_nowfront->next_id=NULL;          //删除前面一个设备的后端指针
+                                sig_nowfront->next=NULL;          //删除前面一个设备的后端指针
                                 return 1;                               //成功返回
                             }
                             else                            //如果没有设备了
                             {
                                 XLsig * temp;
-                                temp=sig_now->next_id;
-                                sig_nowfront->next_id=temp;          //前面一个设备的后端指针指向后一个设备
+                                temp=sig_now->next;
+                                sig_nowfront->next=temp;          //前面一个设备的后端指针指向后一个设备
                                 free(sig_now);                       //释放内存
                                 return 1;                               //成功返回
                             }
                         }
                 }
-                else if(sig_now->next_id!=NULL)          //如果不是要找的设备但后面还有设备
+                else if(sig_now->next!=NULL)          //如果不是要找的设备但后面还有设备
                 {
                         sig_nowfront=sig_now;                     //记录下当前操作设备的前一个设备
-                        sig_now=sig_now->next_id;                 //当前操作设备向后移动一个
+                        sig_now=sig_now->next;                 //当前操作设备向后移动一个
                 }
                 else return 0;                             //如果既不是要找的设备后面也没有设备了，报错退出
         }
@@ -119,8 +119,8 @@ void sig_list(void) {
         while(i==0) {
 
                 printf(" %d",sig_now->id);
-                if(sig_now->next_id==NULL)i=1;
-                else sig_now=sig_now->next_id;
+                if(sig_now->next==NULL)i=1;
+                else sig_now=sig_now->next;
         }
 }
 

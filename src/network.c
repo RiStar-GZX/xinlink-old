@@ -225,7 +225,7 @@ int net_receive(void)   //接受网络数据包的线程
                 system("clear");
                 netdev_id_t id;
                 XLsig_pak pak;
-                if(net_get_sig(data,30/*du_buf_size(data)*/,&id,&pak)<=0)printf("pak error!\n");  //从数据包中提取出pak
+                if(net_get_sig(data,26/*du_buf_size(data)*/,&id,&pak)<=0)printf("pak error!\n");  //从数据包中提取出pak
                 else{
                     sig_send(id,pak.name,&pak);
                 }
@@ -250,6 +250,11 @@ int net_receive(void)   //接受网络数据包的线程
                 if(net_rev.ip.net_ipv4!=core_get(1)->net.ip.net_ipv4)
                     net_get_core(data,&net_rev);
                 core_create(&net_rev);
+            }
+            else if (*data==PAK_MODE_GET_DEV) {
+                printf("对方发送设备信息!\n");
+                show_ipv4(&clientaddr.sin_addr.s_addr);
+                net_get_dev_info(clientaddr.sin_addr.s_addr,data);
             }
         }
 
@@ -497,3 +502,57 @@ int net_connect(XLnet *net,int mode)
     }
     return 1;
 }
+
+int net_send_dev_info(core_id_t core_id)
+{
+    int p=0;
+    uint16_t buf_size=1+2; //|mode(u8)|size(u16)|
+    extern XLdev * dev_head;
+    XLdev * dev_now=dev_head;
+    for(;;)
+    {
+        buf_size+=strlen(dev_now->name)+1;
+        if(dev_now->next==NULL)break;
+        dev_now=dev_now->next;
+    }
+    printf("size of buf=%d\n",buf_size);
+    dev_now=dev_head;
+    uint8_t t=PAK_MODE_GET_DEV,* buf=malloc(sizeof(uint8_t)*buf_size);
+    if(add_data(buf,&p,&t,1)<=0)return 0;
+    if(add_data(buf,&p,&buf_size,2)<=0)return 0;
+    for(;;)
+    {
+        if(add_data(buf,&p,dev_now->name,strlen(dev_now->name)+1)<=0)return 0;
+        if(dev_now->next==NULL)break;
+        dev_now=dev_now->next;
+    }
+    XLCore * core=core_get(core_id);
+    if(core==NULL)return 0;
+    if(net_send(&core->net,buf,(uint32_t)buf_size)<=0)return 0;
+    return 1;
+}
+
+core_id_t net_get_dev_info(uint32_t ipv4,uint8_t * buf)
+{
+      XLCore * core=core_get_by_ip(ipv4);
+      if(core==NULL)return 0;
+      int p=1;
+      uint16_t buf_size;
+      if((buf_size=*(uint16_t*)get_data(buf,&p,2))==NULL)return 0;
+      while (p<=buf_size) {
+          str * s;
+          if((s=get_str(buf,&p,(int)buf_size))==NULL)return 0;
+          netdev_id_t netdev;
+          if(netdev=netdev_create(s)>0);
+          {
+            printf("网络:");
+            show_ipv4(&ipv4);
+            printf("找到网络设备:%s\n",s);
+            struct ip ip;
+            ip.net_ipv4=ipv4;
+            netdev_set_net(netdev,ip,core->net.port,NETWORK_IPV4);
+          }
+      }
+      return 1;
+}
+

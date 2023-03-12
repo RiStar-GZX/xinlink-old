@@ -29,7 +29,7 @@ typedef  int (*FUNC)(sig_id_t sig_id,XLsig_pak * pak);
 typedef struct XLsig {           //信号
 
         sig_id_t id;                    //信号操作点
-        struct XLsig * next_id;      //下一个信号
+        struct XLsig * next;      //下一个信号
         struct XLdev * dev;           //归属设备
         struct XLsig_par * sig_par_h; //参数，为空时表示没有参数
         str  name[SIGNAL_NAME_LENGTH];  //名字
