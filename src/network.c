@@ -220,7 +220,7 @@ int net_receive(void)   //接受网络数据包的线程
                 exit(1);
             }
             //printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
-            if(*data==PAK_MODE_SIGNAL)
+            if(*data==PAK_MODE_SIGNAL&&core_get_by_ip(clientaddr.sin_addr.s_addr)!=NULL)
             {
                 system("clear");
                 netdev_id_t id;
