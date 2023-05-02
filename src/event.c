@@ -147,11 +147,11 @@ int event_set(str * name,EVENT event)
     return 1;
 }
 
-XLcmd_list * event(str *name,XLcmd_list cmd_list)
+INS * event(str *name,INS * ins)
 {
     XLevent * event;
     event=event_get_by_name(name);
-    if(event==NULL)return NULL;
-    return event->event(cmd_list);
+    if(event==NULL)return 0;
+    return event->event(ins);
 }
 

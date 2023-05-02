@@ -1,18 +1,46 @@
 #include <stdio.h>
 #include <core.h>
 #include <event.h>
+#include <network.h>
+#include <instruction.h>
 
-XLcmd_list * myevent(XLcmd_list cmd_list)
+/*INS * myevent(INS * ins)
 {
     printf("this is event!\n\n");
     return NULL;
-}
+}*/
 
-int main(int argc, char *argv[])
+int main()
 {
-    event_add("event",myevent);
-    XLcmd_list cmd;
-    if(event("event",cmd)==NULL)printf("NULL\n");
+    /*event_add("event",myevent);
+    INS * ins;
+    if(event("event",ins)==NULL)printf("NULL\n");*/
+
+    /*XLins * ins=NULL;
+    while(1)
+    {
+        int a;
+        printf("mode:");
+        scanf("%d",&a);
+        send_queue_add(ins,(LEVEL)a);
+        show_send_queue();
+    }*/
+    /*XLins_decoded uncode;
+    uncode.data_list=malloc(sizeof (XLins_decoded_data));
+    strcpy((str*)uncode.event_name,"event");
+    strcpy((str*)uncode.data_list->data_name,"data1");
+    uncode.data_list->datasize=4;
+    uint8_t a[4]={0x30,0x31,0x32,0x33};
+    uncode.data_list->data=(uint8_t*)&a;
+
+    uncode.data_list->next=malloc(sizeof (XLins_decoded_data));
+    strcpy((str*)uncode.data_list->next->data_name,"data2");
+    uncode.data_list->next->data=(uint8_t*)&a;
+    uncode.data_list->next->datasize=4;
+
+    printf("encode:%sX\n",ins_encode(&uncode));
+    printf("\n%s\n",(uint8_t*)&a);*/
+    ins_decode("event ap sd dfs dfss    sdgs");
     return 0;
 }
 

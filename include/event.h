@@ -6,7 +6,7 @@
 #include<string.h>
 
 #include <type.h>
-#include <command.h>
+#include <instruction.h>
 
 #define EVENT_NAME_LENGTH 64
 
@@ -14,7 +14,7 @@
     typedef unsigned int      event_id_t;
 #endif
 
-typedef  XLcmd_list * (*EVENT)(XLcmd_list cmd_list);
+typedef  INS *(*EVENT)(INS * ins);
 
 typedef struct XLevent{
     str name[EVENT_NAME_LENGTH];
@@ -33,6 +33,6 @@ int event_remove(event_id_t id);
 int event_set(str * name,EVENT event);
 XLevent * event_get_by_id(event_id_t id);
 XLevent * event_get_by_name(str * name);
-XLcmd_list * event(str *name,XLcmd_list cmd_list);
+INS *event(str *name,INS *ins);
 
 #endif // EVENT_H
