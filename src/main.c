@@ -16,15 +16,15 @@ int main()
     INS * ins;
     if(event("event",ins)==NULL)printf("NULL\n");*/
 
-    /*XLins * ins=NULL;
+    XLins  ins;
     while(1)
     {
         int a;
         printf("mode:");
         scanf("%d",&a);
-        send_queue_add(ins,(LEVEL)a);
-        show_send_queue();
-    }*/
+        recv_queue_add(&ins,(LEVEL)a);
+        recv_queue_show();
+    }
     /*XLins_decoded uncode;
     uncode.data_list=malloc(sizeof (XLins_decoded_data));
     strcpy((str*)uncode.event_name,"event");
@@ -40,7 +40,9 @@ int main()
 
     printf("encode:%sX\n",ins_encode(&uncode));
     printf("\n%s\n",(uint8_t*)&a);*/
-    ins_decode("event ap sd dfs dfss    sdgs");
+
+    //XLins_decoded ins=*ins_decode("event 55 4 idf");
+    //printf("%s\n",ins_encode(&ins));
     return 0;
 }
 

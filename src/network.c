@@ -205,7 +205,7 @@ int send_queue_add(XLins * ins,LEVEL level)
     return 0;
 }
 
-void show_send_queue(void){
+void send_queue_show(void){
     extern XLins_queue * send_queue_head;
     if(send_queue_head==NULL)
     {
@@ -216,6 +216,81 @@ void show_send_queue(void){
     while (1) {
         printf("%d ",ins_now->level);
         if(ins_now->next==send_queue_head)break;
+        ins_now=ins_now->next;
+    }
+    printf("\n");
+}
+
+int recv_queue_del(void)
+{
+    extern XLins_queue * recv_queue_head;
+    if(recv_queue_head->next==recv_queue_head){
+        free(recv_queue_head);
+        return 1;
+    }
+    recv_queue_head->next->front=recv_queue_head->front;
+    recv_queue_head->front->next=recv_queue_head->next;
+    XLins_queue * tmp=recv_queue_head->next;
+    free(recv_queue_head);
+    recv_queue_head=tmp;
+    return 1;
+}
+
+int recv_queue_add(XLins * ins,LEVEL level)
+{
+    extern XLins_queue * recv_queue_head;
+    if(recv_queue_head==NULL)
+    {
+        recv_queue_head=malloc(sizeof (XLins_queue));
+        recv_queue_head->ins=ins;
+        recv_queue_head->level=level;
+        recv_queue_head->front=recv_queue_head;
+        recv_queue_head->next=recv_queue_head;
+        return 1;
+    }
+    XLins_queue * ins_now=recv_queue_head;
+    while (1) {
+        if(level>ins_now->level){
+            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
+            ins_new->next=ins_now;
+            ins_new->front=ins_now->front;
+
+            ins_now->front->next=ins_new;
+            ins_now->front=ins_new;
+
+            ins_new->level=level;
+            if(ins_now==recv_queue_head)recv_queue_head=ins_new;
+
+            return 1;
+        }
+        if(ins_now->next==recv_queue_head)
+        {
+            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
+            ins_new->next=ins_now->next;
+            ins_new->front=ins_now;
+
+            ins_now->next->front=ins_new;
+            ins_now->next=ins_new;
+
+            ins_new->level=level;
+            return 1;
+        }
+        ins_now=ins_now->next;
+    }
+    return 0;
+}
+
+void recv_queue_show(void){
+    extern XLins_queue * recv_queue_head;
+    if(recv_queue_head==NULL)
+    {
+        printf("no!\n");
+        return;
+    }
+    XLins_queue * ins_now=recv_queue_head;
+    while (1) {
+        printf("%d ",ins_now->level);
+        if(ins_now->next==recv_queue_head)break;
         ins_now=ins_now->next;
     }
     printf("\n");

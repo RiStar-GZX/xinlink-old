@@ -46,8 +46,12 @@ typedef struct XLins_queue {
 
 XLnet * network_get_local_info(void);
 
-
+int send_queue_del(void);
 int send_queue_add(XLins * ins,LEVEL level);
-void show_send_queue(void);
+void send_queue_show(void);
+
+int recv_queue_del(void);
+int recv_queue_add(XLins * ins,LEVEL level);
+void recv_queue_show(void);
 
 #endif // NETWORK_H

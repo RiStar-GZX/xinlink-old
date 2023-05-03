@@ -22,7 +22,7 @@ typedef struct XLins{
 
 
 typedef  struct XLins_decoded_data{
-    str * data_name[64];
+    //str * data_name[64];
     uint8_t *data;
     int datasize;
     struct XLins_decoded_data * next;
