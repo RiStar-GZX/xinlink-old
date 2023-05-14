@@ -3,6 +3,28 @@
 XLins_queue * send_queue_head;
 XLins_queue * recv_queue_head;
 
+str * get_ins(uint8_t *buf,int maxsize)
+{
+     if(buf==NULL)return NULL;
+     uint8_t * buf_p=buf;
+     int i=1;
+     while (*buf_p!='\0')
+     {
+         buf_p++;
+         i++;
+         if(i>maxsize)return NULL;
+     }
+     str * data=malloc(sizeof(str)*i),*data_p=data;
+     buf_p=buf;
+     for(int j=0;j<i;j++)
+     {
+         *data_p=*buf_p;
+         data_p++;
+         buf_p++;
+     }
+     return data;
+}
+
 void show_buf(uint8_t *data,int size)       //展示数据包(调试用)
 {
     int i=0;
@@ -91,13 +113,16 @@ int TCP_receive(void)   //接受网络数据包的线程
 XLins * ins_decode_data(DATA *data,int size){
     DATA * data_p=data;
     XLnet net;
-    int p=1;
+    int pak_size;
     if(size<=13)return  NULL;
     XLins * ins=malloc(sizeof (XLins));
-    /*if(*data_p==NETWORK_MODE_COMMON_INS)
-    {*/
-        ins->mode=NETWORK_MODE_COMMON_INS;
-        data_p+=3;
+
+    ins->mode=*data_p;
+    if(ins->mode==NETWORK_MODE_COMMON_INS)
+    {
+        data_p++;
+        pak_size=(int)*(uint16_t *)data_p;
+        data_p+=2;
         net.ip=*(IP*)data_p;
         data_p+=4;
         net.port=*(PORT*)data_p;
@@ -110,12 +135,14 @@ XLins * ins_decode_data(DATA *data,int size){
         core=core_get_by_net(&net);
         if(core==NULL)return NULL;
         printf("core_id:%d\n",core->id);
-    /*}
+        ins->core_id=core->id;
+        printf("get str:%s\n",get_ins(data_p,pak_size-15));
+    }
     else if(*data_p==NETWORK_MODE_START_INS)
     {
 
-    }*/
-    //else return NULL;
+    }
+    else return NULL;
 }
 DATA * ins_make_data(XLins *ins,int * size){
     //Measure size
