@@ -1,8 +1,11 @@
 #include<network.h>
 #include <core.h>
 #include <event.h>
+#include <core.h>
 XLins_queue * send_queue_head;
 XLins_queue * recv_queue_head;
+
+uint16_t pak_id=0;
 
 //----------Packet production tool----------//
 str * get_str(void *ins,int *seek,int maxsize)
@@ -63,8 +66,12 @@ int TCP_send(XLnet * net,DATA * data,int datasize)
 
     serveraddr.sin_family = AF_INET; //协议族，AF_INET：ipv4网络协议
 
-    serveraddr.sin_addr.s_addr = net->ip;//ip地址
-    serveraddr.sin_port = htons(net->port);
+
+    serveraddr.sin_addr.s_addr =inet_addr("192.168.1.41");//ip地址
+    serveraddr.sin_port = htons(8081);
+
+    //serveraddr.sin_addr.s_addr = net->ip;//ip地址
+    //serveraddr.sin_port = htons(net->port);
 
     if(sendto(sockfd, data, datasize, 0, (struct sockaddr *)&serveraddr, addrlen) == -1)
     {
@@ -73,46 +80,6 @@ int TCP_send(XLnet * net,DATA * data,int datasize)
     //第四步：关闭套接字文件描述符
     close(sockfd);
     return 1;
-}
-
-int ins_recv_thread(void)
-{
-     while(1)
-     {
-        int sockfd; //文件描述符
-        struct sockaddr_in serveraddr; //服务器网络信息结构体
-        socklen_t addrlen = sizeof(serveraddr);
-        //创建套接字
-        if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-        {
-            perror("fail to socket");
-        }
-        //填充服务器网络信息结构体
-        serveraddr.sin_family = AF_INET;
-        serveraddr.sin_addr.s_addr = network_get_local_info()->ip;     //后面要传参
-        serveraddr.sin_port = htons(network_get_local_info()->port);
-        //将套接字与服务器网络信息结构体绑定
-        if(bind(sockfd, (struct sockaddr *)&serveraddr, addrlen) < 0)
-        {
-            perror("fail to bind");
-        }
-        while(1)
-        {
-            //进行通信
-            uint8_t * data=malloc(sizeof(uint8_t)*PAK_MAX_SIZE);
-            struct sockaddr_in clientaddr;
-            if(recvfrom(sockfd, data, PAK_MAX_SIZE, 0, (struct sockaddr *)&clientaddr, &addrlen) < 0)
-            {
-                perror("fail to recvfrom");
-            }
-            printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
-            XLins ins=*ins_decode_data(data);
-            ins_send_to_event(&ins);
-        }
-
-        //关闭文件描述符
-        close(sockfd);
-     }
 }
 
 XLins * ins_decode_data(DATA *data){
@@ -268,6 +235,7 @@ DATA * ins_make_data(XLins *ins,int * size){
     //ins_decode_data(data);
     return data;
 }
+
 void * ins_send_thread(void * arg){
     while (1) {
         while (1) {
@@ -288,12 +256,53 @@ void * ins_send_thread(void * arg){
     }
 }
 
+void * ins_recv_thread(void * arg)
+{
+     while(1)
+     {
+        int sockfd; //文件描述符
+        struct sockaddr_in serveraddr; //服务器网络信息结构体
+        socklen_t addrlen = sizeof(serveraddr);
+        //创建套接字
+        if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        {
+            perror("fail to socket");
+        }
+        //填充服务器网络信息结构体
+        serveraddr.sin_family = AF_INET;
+        serveraddr.sin_addr.s_addr = network_get_local_info()->ip;     //后面要传参
+        serveraddr.sin_port = htons(network_get_local_info()->port);
+        //将套接字与服务器网络信息结构体绑定
+        if(bind(sockfd, (struct sockaddr *)&serveraddr, addrlen) < 0)
+        {
+            perror("fail to bind");
+        }
+        while(1)
+        {
+            //进行通信
+            uint8_t * data=malloc(sizeof(uint8_t)*PAK_MAX_SIZE);
+            struct sockaddr_in clientaddr;
+            if(recvfrom(sockfd, data, PAK_MAX_SIZE, 0, (struct sockaddr *)&clientaddr, &addrlen) < 0)
+            {
+                perror("fail to recvfrom");
+            }
+            printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
+            XLins ins=*ins_decode_data(data);
+            ins_send_to_event(&ins);
+        }
+
+        //关闭文件描述符
+        close(sockfd);
+     }
+}
+
 int network_thread_init(void)
 {
-    pthread_t thread;
-    pthread_create(&thread,NULL,ins_send_thread,NULL);
-    if(!thread)perror("thread");
-    //pthread_create(&thread,NULL,ins_recv_thread,NULL);
+    pthread_t send_thread,receive_thread;
+    pthread_create(&send_thread,NULL,ins_send_thread,NULL);
+    if(!send_thread)perror("thread");
+    pthread_create(&receive_thread,NULL,ins_recv_thread,NULL);
+    if(!receive_thread)perror("thread");
     return 1;
 }
 
@@ -466,4 +475,93 @@ void recv_queue_show(void){
         ins_now=ins_now->next;
     }
     printf("\n");
+}
+
+//connect
+
+uint16_t create_pak_id(void)
+{
+    extern uint16_t pak_id;
+    pak_id++;
+    return pak_id;
+}
+
+DATA * connect_make_data(core_id_t core_id,int req_or_acc,uint16_t pak_id){
+    //Get core
+    if(req_or_acc!=0&&req_or_acc!=1)return -1;
+    XLcore * core=core_get_by_id(core_id);
+        if(core==NULL)return -1;
+
+        //Measure size
+       int s=2+2+4+2+6+2; //|mode|size|ip|port|MAC|PAK_ID|
+
+       s+=strlen(core->name)+1;
+       //Write head
+       DATA * data=malloc(sizeof (DATA)*s+20),*data_p=data;
+
+       if(req_or_acc==0)
+       *(uint16_t *)data_p=NETWORK_MODE_CONNECT_REQUEST;
+       if(req_or_acc==1)
+       *(uint16_t *)data_p=NETWORK_MODE_CONNECT_ACCEPT;
+
+       data_p+=2;
+       *(uint16_t *)data_p=(uint16_t)s;
+       data_p+=2;
+
+       *(IP *)data_p=core->net.ip;
+       data_p+=sizeof(IP);
+       *(PORT *)data_p=core->net.port;
+       data_p+=sizeof(PORT);
+       //*(PORT *)data_p=core->net.mac[1];
+       data_p+=6;
+       if(req_or_acc==0)*(uint16_t*)data_p=create_pak_id();
+       if(req_or_acc==1)*(uint16_t*)data_p=pak_id;
+       data_p+=2;
+
+       //Write ins
+       str * name_p=(str *)core->name;
+       for(int i=0;i<(int)strlen(core->name)+1;i++) {
+           *data_p=*name_p;
+           name_p++;
+           data_p++;
+       }
+       show_buf(data,s);
+       connect_decode_data_and_connect(data);
+       return data;
+}
+
+core_id_t connect_decode_data_and_connect(DATA * data){
+    DATA * data_p=data;
+    XLnet net;
+    int datasize;
+    //Get head of the network packets
+
+    if(*(uint16_t *)data_p!=NETWORK_MODE_CONNECT_REQUEST)return -1;
+
+    data_p+=2;
+    datasize=*(uint16_t *)data_p;
+    data_p+=2;
+    net.ip=*(IP*)data_p;
+    data_p+=4;
+    net.port=*(PORT*)data_p;
+    data_p+=2;
+    //net.mac=(MAC*)data_p;
+    data_p+=6;
+    printf("IP:%d port:%d\n",net.ip,net.port);
+
+    //Get core by Network information
+
+    core_id_t core_id=core_add(&net,"new core");
+    if(core_id<=0){free(data);return -1;}
+    printf("core_id:%d\n",core_id);
+
+    uint16_t pak_id;
+    pak_id=*(uint16_t *)data_p;
+    data_p+=2;
+    //Read INS
+    int seek;
+    str * name=get_str(data_p,&seek,PAK_MAX_SIZE);
+    printf("name:%s\n",name);
+
+    return 1;
 }

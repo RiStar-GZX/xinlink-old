@@ -9,8 +9,11 @@ INS * event1(INS * ins){
 }
 int main()
 {
-    if(xinlink_init()<=0)printf("init error!\n");
+    /*if(xinlink_init()<=0)printf("init error!\n");
     app_add("app",event1);
+    XLnet net;
+
+    core_add(&net,"bb");
     XLins ins;
     INS * inss="event ass";
     ins.INS=inss;
@@ -18,10 +21,16 @@ int main()
     ins.mode=NETWORK_MODE_RECEIVER_START_EVENT;
     ins.recv_event_id=114;
     ins.core_id=1;
+
     //strcpy(ins.ins,"event a");
 
-    send_queue_add(&ins,15);
+    while (1) {
 
+
+    send_queue_add(&ins,15);
+    int a;
+    scanf("%d",&a);
+    }
 
  //   send_queue_add(&ins,1);
 
@@ -41,5 +50,7 @@ int main()
         else send_queue_del();
         send_queue_show();a
     }*/
+    core_init();
+    connect_make_data(1,0,0x5050);
     return 0;
 }

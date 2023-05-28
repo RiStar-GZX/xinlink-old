@@ -16,6 +16,9 @@
 
 #define PAK_MAX_SIZE 256
 
+#define NETWORK_MODE_CONNECT_REQUEST 32768
+#define NETWORK_MODE_CONNECT_ACCEPT 36864
+
 #define NETWORK_MODE_SENDER_EVENT_ID 0
 #define NETWORK_MODE_SENDER_PERMIT 4
 #define SEE_SENDER_ONLY 12
@@ -37,8 +40,11 @@ int recv_queue_add(XLins * ins,LEVEL level);
 void recv_queue_show(void);
 
 
-int ins_recv_thread(void);
+void * ins_recv_thread(void *arg);
 void *ins_send_thread(void* arg);
 int network_thread_init(void);
+
+DATA * connect_make_data(core_id_t core_id,int req_or_acc,uint16_t pak_id);
+core_id_t connect_decode_data_and_connect(DATA * data);
 
 #endif // NETWORK_H

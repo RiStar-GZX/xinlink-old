@@ -9,6 +9,7 @@ int core_init(void)
     core_list_head.next=NULL;
     core_list_head.core->id=1;
     core_list_head.core->net=*network_get_local_info();
+    strcpy(core_list_head.core->name,"core1");
     return 1;
 }
 
@@ -26,6 +27,12 @@ int core_add(XLnet * net,str * name)
     if(net->port==0)return -1;
     extern XLcore_list core_list_head;
     XLcore_list * core_now=&core_list_head,*core_front=core_now;
+    while (1) {
+        if(strcmp(core_now->core->name,name)==0)return -1;
+        if(core_now->next==NULL)break;
+        core_now=core_now->next;
+    }
+    core_now=&core_list_head;
     while (1)
     {
         if(id==core_now->core->id)id++;
@@ -132,4 +139,26 @@ XLcore * core_get_by_name(str * name)
         core_now=core_now->next;
     }
     return NULL;
+}
+
+int core_rename(core_id_t id,str * name)
+{
+    if(id==0)return -1;
+    extern XLcore_list core_list_head;
+    XLcore_list * core_now=&core_list_head;
+    if(core_now==NULL)return -1;
+    while (1) {
+        if(strcmp(core_now->core->name,name)==0)
+        {
+            //name is same
+            if(id==core_now->core->id)return 2;
+            else return -1;
+        }
+        if(core_now->next==NULL)break;
+        core_now=core_now->next;
+    }
+    XLcore * core=core_get_by_id(id);
+    if(core==NULL)return -1;
+    strcpy((str*)core->name,name);
+    return 1;
 }
