@@ -4,6 +4,7 @@
 #include <core.h>
 XLins_queue * send_queue_head;
 XLins_queue * recv_queue_head;
+XLins_queue * total_queue_head;
 
 uint16_t pak_id=0;
 
@@ -44,6 +45,15 @@ void show_buf(uint8_t *data,int size)       //展示数据包(调试用)
     printf("\n");
 }
 
+//------------Local_infomations------------//
+XLnet * network_get_local_info(void)
+{
+    XLnet * net_info=malloc(sizeof(XLnet));
+    net_info->ip=inet_addr("192.168.1.7");
+    //net_info->mac=;
+    net_info->port=8081;
+    return  net_info;
+}
 
 //----------------Network------------------//
 int TCP_send(XLnet * net,DATA * data,int datasize)
@@ -81,7 +91,9 @@ int TCP_send(XLnet * net,DATA * data,int datasize)
     close(sockfd);
     return 1;
 }
+//---------Packet Make and Decode----------//
 
+//part of instruction
 XLins * ins_decode_data(DATA *data){
     DATA * data_p=data;
     XLnet net;
@@ -236,248 +248,7 @@ DATA * ins_make_data(XLins *ins,int * size){
     return data;
 }
 
-void * ins_send_thread(void * arg){
-    while (1) {
-        while (1) {
-            extern XLins_queue * send_queue_head;
-            if(send_queue_head==NULL)break;
-            XLins_queue * queue_now=send_queue_head;
-            if(queue_now->ins==NULL)break;
-
-            XLcore *core=core_get_by_id(queue_now->ins->core_id);
-
-            if(core<=0)break;
-            int size=0;
-            DATA * data=ins_make_data(queue_now->ins,&size);
-            if(size==0||data==NULL)break;
-            TCP_send(&core->net,data,size);
-            send_queue_del();
-        }
-    }
-}
-
-void * ins_recv_thread(void * arg)
-{
-     while(1)
-     {
-        int sockfd; //文件描述符
-        struct sockaddr_in serveraddr; //服务器网络信息结构体
-        socklen_t addrlen = sizeof(serveraddr);
-        //创建套接字
-        if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-        {
-            perror("fail to socket");
-        }
-        //填充服务器网络信息结构体
-        serveraddr.sin_family = AF_INET;
-        serveraddr.sin_addr.s_addr = network_get_local_info()->ip;     //后面要传参
-        serveraddr.sin_port = htons(network_get_local_info()->port);
-        //将套接字与服务器网络信息结构体绑定
-        if(bind(sockfd, (struct sockaddr *)&serveraddr, addrlen) < 0)
-        {
-            perror("fail to bind");
-        }
-        while(1)
-        {
-            //进行通信
-            uint8_t * data=malloc(sizeof(uint8_t)*PAK_MAX_SIZE);
-            struct sockaddr_in clientaddr;
-            if(recvfrom(sockfd, data, PAK_MAX_SIZE, 0, (struct sockaddr *)&clientaddr, &addrlen) < 0)
-            {
-                perror("fail to recvfrom");
-            }
-            printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
-            XLins ins=*ins_decode_data(data);
-            ins_send_to_event(&ins);
-        }
-
-        //关闭文件描述符
-        close(sockfd);
-     }
-}
-
-int network_thread_init(void)
-{
-    pthread_t send_thread,receive_thread;
-    pthread_create(&send_thread,NULL,ins_send_thread,NULL);
-    if(!send_thread)perror("thread");
-    pthread_create(&receive_thread,NULL,ins_recv_thread,NULL);
-    if(!receive_thread)perror("thread");
-    return 1;
-}
-
-XLnet * network_get_local_info(void)
-{
-    XLnet * net_info=malloc(sizeof(XLnet));
-    net_info->ip=inet_addr("192.168.1.7");
-    //net_info->mac=;
-    net_info->port=8081;
-    return  net_info;
-}
-
-int send_queue_del(void)
-{
-
-    extern XLins_queue * send_queue_head;
-
-    if(send_queue_head==NULL)return 0;
-    if(send_queue_head->next==send_queue_head){
-        free(send_queue_head);
-        send_queue_head=NULL;
-        return 1;
-    }
-    send_queue_head->next->front=send_queue_head->front;
-    send_queue_head->front->next=send_queue_head->next;
-    XLins_queue * tmp=send_queue_head->next;
-    free(send_queue_head);
-    send_queue_head=tmp;
-    return 1;
-}
-
-int send_queue_add(XLins * ins,LEVEL level)
-{
-    extern XLins_queue * send_queue_head;
-    if(send_queue_head==NULL)
-    {
-        send_queue_head=malloc(sizeof (XLins_queue));
-        send_queue_head->ins=ins;
-        send_queue_head->level=level;
-        send_queue_head->front=send_queue_head;
-        send_queue_head->next=send_queue_head;
-        return 1;
-    }
-    XLins_queue * ins_now=send_queue_head;
-    while (1) {
-        if(level>ins_now->level){
-            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
-            ins_new->next=ins_now;
-            ins_new->front=ins_now->front;
-
-            ins_now->front->next=ins_new;
-            ins_now->front=ins_new;
-
-            ins_new->ins=ins;
-            ins_new->level=level;
-            if(ins_now==send_queue_head)send_queue_head=ins_new;
-
-            return 1;
-        }
-        if(ins_now->next==send_queue_head)
-        {
-            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
-            ins_new->next=ins_now->next;
-            ins_new->front=ins_now;
-
-            ins_now->next->front=ins_new;
-            ins_now->next=ins_new;
-
-            ins_new->ins=ins;
-            ins_new->level=level;
-            return 1;
-        }
-        ins_now=ins_now->next;
-    }
-    return 0;
-}
-
-void send_queue_show(void){
-    extern XLins_queue * send_queue_head;
-    if(send_queue_head==NULL)
-    {
-        printf("no!\n");
-        return;
-    }
-    XLins_queue * ins_now=send_queue_head;
-    while (1) {
-        printf("%d ",ins_now->level);
-        if(ins_now->next==send_queue_head)break;
-        ins_now=ins_now->next;
-    }
-    printf("\n");
-}
-
-int recv_queue_del(void)
-{
-    extern XLins_queue * recv_queue_head;
-    if(recv_queue_head==NULL)return 0;
-    if(recv_queue_head->next==recv_queue_head){
-        free(recv_queue_head);
-        send_queue_head=NULL;
-        return 1;
-    }
-    recv_queue_head->next->front=recv_queue_head->front;
-    recv_queue_head->front->next=recv_queue_head->next;
-    XLins_queue * tmp=recv_queue_head->next;
-    free(recv_queue_head);
-    recv_queue_head=tmp;
-    return 1;
-}
-
-int recv_queue_add(XLins * ins,LEVEL level)
-{
-    extern XLins_queue * recv_queue_head;
-    if(recv_queue_head==NULL)
-    {
-        recv_queue_head=malloc(sizeof (XLins_queue));
-        recv_queue_head->ins=ins;
-        recv_queue_head->level=level;
-        recv_queue_head->front=recv_queue_head;
-        recv_queue_head->next=recv_queue_head;
-        return 1;
-    }
-    XLins_queue * ins_now=recv_queue_head;
-    while (1) {
-        if(level>ins_now->level){
-            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
-            ins_new->next=ins_now;
-            ins_new->front=ins_now->front;
-
-            ins_now->front->next=ins_new;
-            ins_now->front=ins_new;
-
-
-            ins_new->ins=ins;
-            ins_new->level=level;
-            if(ins_now==recv_queue_head)recv_queue_head=ins_new;
-
-            return 1;
-        }
-        if(ins_now->next==recv_queue_head)
-        {
-            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
-            ins_new->next=ins_now->next;
-            ins_new->front=ins_now;
-
-            ins_now->next->front=ins_new;
-            ins_now->next=ins_new;
-
-
-            ins_new->ins=ins;
-            ins_new->level=level;
-            return 1;
-        }
-        ins_now=ins_now->next;
-    }
-    return 0;
-}
-
-void recv_queue_show(void){
-    extern XLins_queue * recv_queue_head;
-    if(recv_queue_head==NULL)
-    {
-        printf("no!\n");
-        return;
-    }
-    XLins_queue * ins_now=recv_queue_head;
-    while (1) {
-        printf("%d ",ins_now->level);
-        if(ins_now->next==recv_queue_head)break;
-        ins_now=ins_now->next;
-    }
-    printf("\n");
-}
-
-//connect
+//part of connect
 
 uint16_t create_pak_id(void)
 {
@@ -551,10 +322,6 @@ core_id_t connect_decode_data_and_connect(DATA * data){
 
     //Get core by Network information
 
-    core_id_t core_id=core_add(&net,"new core");
-    if(core_id<=0){free(data);return -1;}
-    printf("core_id:%d\n",core_id);
-
     uint16_t pak_id;
     pak_id=*(uint16_t *)data_p;
     data_p+=2;
@@ -563,5 +330,252 @@ core_id_t connect_decode_data_and_connect(DATA * data){
     str * name=get_str(data_p,&seek,PAK_MAX_SIZE);
     printf("name:%s\n",name);
 
+    core_id_t core_id=core_add(&net,name);
+    if(core_id<=0){free(data);printf("sd\n");return -1;}
+
+    printf("core_id:%d\n",core_id);
+    printf("name:%s\n",core_get_by_id(core_id)->name);
     return 1;
+}
+
+//-----------------Thread-----------------//
+
+void * ins_send_thread(void * arg){
+    while (1) {
+        while (1) {
+            extern XLins_queue * send_queue_head;
+            if(send_queue_head==NULL)break;
+            XLins_queue * queue_now=send_queue_head;
+            if(queue_now->ins==NULL)break;
+
+            XLcore *core=core_get_by_id(queue_now->ins->core_id);
+
+            if(core<=0)break;
+            int size=0;
+            DATA * data=ins_make_data(queue_now->ins,&size);
+            if(size==0||data==NULL)break;
+            TCP_send(&core->net,data,size);
+            queue_del(QUEUE_INS_SEND);
+        }
+    }
+}
+
+void * ins_recv_thread(void * arg)
+{
+     while(1)
+     {
+        int sockfd; //文件描述符
+        struct sockaddr_in serveraddr; //服务器网络信息结构体
+        socklen_t addrlen = sizeof(serveraddr);
+        //创建套接字
+        if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        {
+            perror("fail to socket");
+        }
+        //填充服务器网络信息结构体
+        serveraddr.sin_family = AF_INET;
+        serveraddr.sin_addr.s_addr = network_get_local_info()->ip;     //后面要传参
+        serveraddr.sin_port = htons(network_get_local_info()->port);
+        //将套接字与服务器网络信息结构体绑定
+        if(bind(sockfd, (struct sockaddr *)&serveraddr, addrlen) < 0)
+        {
+            perror("fail to bind");
+        }
+        while(1)
+        {
+            //进行通信
+            uint8_t * data=malloc(sizeof(uint8_t)*PAK_MAX_SIZE);
+            struct sockaddr_in clientaddr;
+            if(recvfrom(sockfd, data, PAK_MAX_SIZE, 0, (struct sockaddr *)&clientaddr, &addrlen) < 0)
+            {
+                perror("fail to recvfrom");
+            }
+            printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
+            XLins *ins=ins_decode_data(data);
+            queue_add(QUEUE_TOTAL,ins,0);
+            //ins_send_to_event(&ins);
+        }
+
+        //关闭文件描述符
+        close(sockfd);
+     }
+}
+
+void * ins_total_thread(void * arg)
+{
+    while (1) {
+    XLins_queue * queue_head=get_head_of_queue(QUEUE_TOTAL);
+    if(queue_head!=NULL)ins_send_to_event(queue_head->ins);
+    queue_del(QUEUE_TOTAL);
+    sleep(1);
+    }
+}
+
+int network_thread_init(void)
+{
+    pthread_t send_thread,receive_thread,total_thread;
+    pthread_create(&send_thread,NULL,ins_send_thread,NULL);
+    if(!send_thread)perror("send thread");
+    pthread_create(&receive_thread,NULL,ins_recv_thread,NULL);
+    if(!receive_thread)perror("receive thread");
+    pthread_create(&total_thread,NULL,ins_total_thread,NULL);
+    if(!total_thread)perror("total thread");
+    return 1;
+}
+
+//-----------------Queue-----------------//
+
+XLins_queue * get_head_of_queue(uint queue)
+{
+    extern XLins_queue * send_queue_head;
+    extern XLins_queue * recv_queue_head;
+    extern XLins_queue * total_queue_head;
+    XLins_queue * queue_head;
+    switch (queue) {
+        case QUEUE_INS_SEND:
+            queue_head=send_queue_head;
+            break;
+        case QUEUE_INS_RECV:
+            queue_head=recv_queue_head;
+            break;
+        case QUEUE_TOTAL:
+           queue_head=total_queue_head;
+           break;
+        default:
+            return NULL;
+            break;
+    }
+    return queue_head;
+}
+int change_head_of_queue(uint queue,XLins_queue *queue_replace)
+{
+    extern XLins_queue * send_queue_head;
+    extern XLins_queue * recv_queue_head;
+    extern XLins_queue * total_queue_head;
+    switch (queue) {
+        case QUEUE_INS_SEND:
+            send_queue_head=queue_replace;
+            break;
+        case QUEUE_INS_RECV:
+            recv_queue_head=queue_replace;
+            break;
+        case QUEUE_TOTAL:
+           total_queue_head=queue_replace;
+           break;
+        default:
+            return -1;
+            break;
+    }
+    return 1;
+}
+int queue_del(uint queue)
+{
+    XLins_queue * queue_head;
+    queue_head=get_head_of_queue(queue);
+    if(queue_head==NULL)return -1;
+
+    if(queue_head->next==queue_head){
+        free(queue_head);
+        change_head_of_queue(queue,NULL);
+        return 1;
+    }
+    queue_head->next->front=queue_head->front;
+    queue_head->front->next=queue_head->next;
+    XLins_queue * tmp=queue_head->next;
+    free(queue_head);
+    change_head_of_queue(queue,tmp);
+    return 1;
+}
+
+int queue_add(uint queue,XLins * ins,LEVEL level)
+{
+
+    extern XLins_queue * send_queue_head;
+    extern XLins_queue * recv_queue_head;
+    extern XLins_queue * total_queue_head;
+    switch (queue) {
+        case QUEUE_INS_SEND:
+            if(QUEUE_INS_SEND_ACCEPT_LEVEL!=1)level=0;
+            if(send_queue_head!=NULL)break;
+            send_queue_head=malloc(sizeof (XLins_queue));
+            send_queue_head->ins=ins;
+            send_queue_head->level=level;
+            send_queue_head->front=send_queue_head;
+            send_queue_head->next=send_queue_head;
+            return 1;
+            break;
+        case QUEUE_INS_RECV:
+            level=0;
+            if(recv_queue_head!=NULL)break;
+            recv_queue_head=malloc(sizeof (XLins_queue));
+            recv_queue_head->ins=ins;
+            recv_queue_head->level=level;
+            recv_queue_head->front=recv_queue_head;
+            recv_queue_head->next=recv_queue_head;
+            return 1;
+            break;
+        case QUEUE_TOTAL:
+            level=0;
+            if(total_queue_head!=NULL)break;
+            total_queue_head=malloc(sizeof (XLins_queue));
+            total_queue_head->ins=ins;
+            total_queue_head->level=level;
+            total_queue_head->front=total_queue_head;
+            total_queue_head->next=total_queue_head;
+            return 1;
+            break;
+        default:
+            return -1;
+            break;
+    }
+    XLins_queue * queue_head=get_head_of_queue(queue);
+
+    XLins_queue * ins_now=queue_head;
+    while (1) {
+        if(level>ins_now->level){
+            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
+            ins_new->next=ins_now;
+            ins_new->front=ins_now->front;
+
+            ins_now->front->next=ins_new;
+            ins_now->front=ins_new;
+
+            ins_new->ins=ins;
+            ins_new->level=level;
+            if(ins_now==queue_head)change_head_of_queue(queue,ins_new);
+
+            return 1;
+        }
+        if(ins_now->next==queue_head)
+        {
+            XLins_queue * ins_new=malloc(sizeof (XLins_queue));
+            ins_new->next=ins_now->next;
+            ins_new->front=ins_now;
+
+            ins_now->next->front=ins_new;
+            ins_now->next=ins_new;
+
+            ins_new->ins=ins;
+            ins_new->level=level;
+            return 1;
+        }
+        ins_now=ins_now->next;
+    }
+    return 0;
+}
+
+void queue_show(int queue){
+    XLins_queue * queue_head=get_head_of_queue(queue);
+    if(queue_head==NULL)
+    {
+        printf("no!\n");
+        return;
+    }
+    XLins_queue * ins_now=queue_head;
+    while (1) {
+        printf("%d ",ins_now->level);
+        if(ins_now->next==queue_head)break;
+        ins_now=ins_now->next;
+    }
+    printf("\n");
 }

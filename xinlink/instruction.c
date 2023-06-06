@@ -127,4 +127,11 @@ int ins_send_to_event(XLins * ins){
         if(event_id<=0)return -1;
         event_run(event_id,ins);
     }
+    if(receiver_mode==NETWORK_MODE_RECEIVER_EVENT_ID)
+    {
+        EVENT event;
+        event=event_get_by_id(ins->recv_event_id);
+
+    }
 }
+
