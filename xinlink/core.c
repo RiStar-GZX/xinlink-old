@@ -33,7 +33,6 @@ int core_add(XLnet * net,str * name)
         core_now=core_now->next;
     }
     core_now=&core_list_head;
-    printf("aaa\n");
     while (1)
     {
         if(id==core_now->core->id)id++;

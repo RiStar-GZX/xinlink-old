@@ -164,7 +164,7 @@ event_id_t event_create(EVENT EVENT){
     {
         event_list_head=malloc(sizeof (XLevent_list));
         event_list_head->event=EVENT;
-        printf("ddd\n");
+        event_list_head->head.queue=NULL;
         event_list_head->id=1;
 
         return 1;
@@ -210,13 +210,13 @@ event_id_t event_create(EVENT EVENT){
     return id;
 }
 
-EVENT  event_get_by_id(event_id_t id)
+XLevent_list * event_get_by_id(event_id_t id)
 {
     extern XLevent_list * event_list_head;
     XLevent_list * event_now=event_list_head;
     if(event_now==NULL)return NULL;
     while (1) {
-        if(id==event_now->id)return event_now->event;
+        if(id==event_now->id)return event_now;
         if(event_now->next==NULL)return NULL;
         event_now=event_now->next;
     }
@@ -226,25 +226,19 @@ EVENT  event_get_by_id(event_id_t id)
 void * event_thread(void * arg)
 {
     printf("11\n");
-    XLevent_thread_arg *event_arg=(XLevent_thread_arg *)arg;
-    if(event_arg->ins.INS==NULL)printf("safa\n");
-    event_arg->event(NULL);
+    XLevent_list *event_arg=(XLevent_list *)arg;
+    event_arg->event(&event_arg->head);
     return NULL;
 }
 
-int event_run(event_id_t id,XLins * ins)
+int event_run(event_id_t id)
 {
-    if(ins==NULL)return -1;
     pthread_t thread;
-    XLevent_thread_arg * event_arg=malloc(sizeof (XLevent_thread_arg));
-    event_arg->event=event_get_by_id(id);
-    if(event_arg->event==NULL)
-    {
-        free(event_arg);
-        return -1;
-    }
-    event_arg->ins=*ins;
-    pthread_create(&thread,NULL,event_thread,event_arg);
+    XLevent_list * event_list=event_get_by_id(id);
+    if(event_list==NULL)return -1;
+    if(event_list->event==NULL)return -1;
+
+    pthread_create(&thread,NULL,event_thread,event_list);
     if(!thread)perror("thread");
     return 1;
 }

@@ -21,7 +21,7 @@ XLapp * app_get_by_name(str * name);
 INS *app(INS *ins);
 
 event_id_t event_create(EVENT event);
-int event_run(event_id_t id,XLins * ins);
-EVENT  event_get_by_id(event_id_t id);
+XLevent_list * event_get_by_id(event_id_t id);
 
+int event_run(event_id_t id);
 #endif // EVENT_H

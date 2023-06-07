@@ -2,9 +2,10 @@
 #include <core.h>
 #include <event.h>
 #include <core.h>
-XLins_queue * send_queue_head;
-XLins_queue * recv_queue_head;
-XLins_queue * total_queue_head;
+XLins_queue_head send_queue_head;
+XLins_queue_head recv_queue_head;
+XLins_queue_head total_queue_head;
+
 
 uint16_t pak_id=0;
 
@@ -56,6 +57,7 @@ XLnet * network_get_local_info(void)
 }
 
 //----------------Network------------------//
+
 int TCP_send(XLnet * net,DATA * data,int datasize)
 {
     //ERROR
@@ -128,7 +130,8 @@ XLins * ins_decode_data(DATA *data){
 
     switch (ins->mode&SEE_SENDER_ONLY) {
         case NETWORK_MODE_SENDER_EVENT_ID:
-            ins->send_event_id=*(event_id_t *)data_p;
+            //ins->send_event_id=*(event_id_t *)data_p;
+            ins_sender_set_id(ins,MODE_EVENT_ID,*(event_id_t*)data_p);
             data_p+=sizeof (event_id_t);
             printf("1:sender is event id\n");
             break;
@@ -142,7 +145,8 @@ XLins * ins_decode_data(DATA *data){
     }
     switch (ins->mode&SEE_RECEIVER_ONLY) {
         case NETWORK_MODE_RECEIVER_EVENT_ID:
-            ins->send_event_id=*(event_id_t*)data_p;
+            //ins->send_event_id=*(event_id_t*)data_p;
+            ins_sender_set_id(ins,MODE_EVENT_ID,*(event_id_t*)data_p);
             data_p+=sizeof (event_id_t);
             printf("1:receiver is event id\n");
             break;
@@ -155,7 +159,8 @@ XLins * ins_decode_data(DATA *data){
                 free(data);
                 return NULL;
             }
-            strcpy((str* )ins->recv_app_name,str_tmp);
+            //strcpy((str* )ins->recv_app_name,str_tmp);
+            ins_recevier_set_appname(ins,str_tmp);
             data_p+=seek;
             free(str_tmp);
             printf("3:receiver is start event\n");
@@ -199,7 +204,7 @@ DATA * ins_make_data(XLins *ins,int * size){
 
     switch (ins->mode&SEE_SENDER_ONLY) {
         case NETWORK_MODE_SENDER_EVENT_ID:
-            *(event_id_t*)data_p=ins->send_event_id;
+            *(event_id_t*)data_p=ins->sender.id;
             data_p+=sizeof (event_id_t);
             printf("1:sender is event id\n");
             break;
@@ -213,7 +218,7 @@ DATA * ins_make_data(XLins *ins,int * size){
     }
     switch (ins->mode&SEE_RECEIVER_ONLY) {
         case NETWORK_MODE_RECEIVER_EVENT_ID:
-            *(event_id_t*)data_p=ins->send_event_id;
+            *(event_id_t*)data_p=ins->sender.id;
             data_p+=sizeof (event_id_t);
             printf("1:receiver is event id\n");
             break;
@@ -221,8 +226,8 @@ DATA * ins_make_data(XLins *ins,int * size){
             printf("2:receiver is permit\n");
             break;
         case NETWORK_MODE_RECEIVER_START_EVENT:
-            strcpy((str *)data_p,(str *)ins->recv_app_name);
-            data_p+=strlen((str *)ins->recv_app_name)+1;
+            strcpy((str *)data_p,(str *)ins->receiver.name);
+            data_p+=strlen((str *)ins->receiver.name)+1;
             printf("3:receiver is start event\n");
             break;
         default:
@@ -343,9 +348,9 @@ core_id_t connect_decode_data_and_connect(DATA * data){
 void * ins_send_thread(void * arg){
     while (1) {
         while (1) {
-            extern XLins_queue * send_queue_head;
-            if(send_queue_head==NULL)break;
-            XLins_queue * queue_now=send_queue_head;
+            extern XLins_queue_head send_queue_head;
+            if(send_queue_head.queue==NULL)break;
+            XLins_queue * queue_now=send_queue_head.queue;
             if(queue_now->ins==NULL)break;
 
             XLcore *core=core_get_by_id(queue_now->ins->core_id);
@@ -355,7 +360,7 @@ void * ins_send_thread(void * arg){
             DATA * data=ins_make_data(queue_now->ins,&size);
             if(size==0||data==NULL)break;
             TCP_send(&core->net,data,size);
-            queue_del(QUEUE_INS_SEND);
+            queue_del(queue_send());
         }
     }
 }
@@ -392,7 +397,7 @@ void * ins_recv_thread(void * arg)
             }
             printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
             XLins *ins=ins_decode_data(data);
-            queue_add(QUEUE_TOTAL,ins,0);
+            queue_add(queue_total(),ins,0);
             //ins_send_to_event(&ins);
         }
 
@@ -404,10 +409,10 @@ void * ins_recv_thread(void * arg)
 void * ins_total_thread(void * arg)
 {
     while (1) {
-    XLins_queue * queue_head=get_head_of_queue(QUEUE_TOTAL);
-    if(queue_head!=NULL)ins_send_to_event(queue_head->ins);
-    queue_del(QUEUE_TOTAL);
-    sleep(1);
+        XLins_queue * queue_head=queue_total()->queue;
+        if(queue_head!=NULL)ins_send_to_event(queue_head->ins);
+        queue_del(queue_total());
+        usleep(100);
     }
 }
 
@@ -425,110 +430,37 @@ int network_thread_init(void)
 
 //-----------------Queue-----------------//
 
-XLins_queue * get_head_of_queue(uint queue)
+int queue_del(XLins_queue_head *head)
 {
-    extern XLins_queue * send_queue_head;
-    extern XLins_queue * recv_queue_head;
-    extern XLins_queue * total_queue_head;
-    XLins_queue * queue_head;
-    switch (queue) {
-        case QUEUE_INS_SEND:
-            queue_head=send_queue_head;
-            break;
-        case QUEUE_INS_RECV:
-            queue_head=recv_queue_head;
-            break;
-        case QUEUE_TOTAL:
-           queue_head=total_queue_head;
-           break;
-        default:
-            return NULL;
-            break;
-    }
-    return queue_head;
-}
-int change_head_of_queue(uint queue,XLins_queue *queue_replace)
-{
-    extern XLins_queue * send_queue_head;
-    extern XLins_queue * recv_queue_head;
-    extern XLins_queue * total_queue_head;
-    switch (queue) {
-        case QUEUE_INS_SEND:
-            send_queue_head=queue_replace;
-            break;
-        case QUEUE_INS_RECV:
-            recv_queue_head=queue_replace;
-            break;
-        case QUEUE_TOTAL:
-           total_queue_head=queue_replace;
-           break;
-        default:
-            return -1;
-            break;
-    }
-    return 1;
-}
-int queue_del(uint queue)
-{
-    XLins_queue * queue_head;
-    queue_head=get_head_of_queue(queue);
+    if(head==NULL)return -1;
+    XLins_queue * queue_head=head->queue;
     if(queue_head==NULL)return -1;
 
     if(queue_head->next==queue_head){
         free(queue_head);
-        change_head_of_queue(queue,NULL);
+        head->queue=NULL;
         return 1;
     }
     queue_head->next->front=queue_head->front;
     queue_head->front->next=queue_head->next;
     XLins_queue * tmp=queue_head->next;
     free(queue_head);
-    change_head_of_queue(queue,tmp);
+    head->queue=tmp;
     return 1;
 }
 
-int queue_add(uint queue,XLins * ins,LEVEL level)
+int queue_add(XLins_queue_head * head,XLins * ins,LEVEL level)
 {
-
-    extern XLins_queue * send_queue_head;
-    extern XLins_queue * recv_queue_head;
-    extern XLins_queue * total_queue_head;
-    switch (queue) {
-        case QUEUE_INS_SEND:
-            if(QUEUE_INS_SEND_ACCEPT_LEVEL!=1)level=0;
-            if(send_queue_head!=NULL)break;
-            send_queue_head=malloc(sizeof (XLins_queue));
-            send_queue_head->ins=ins;
-            send_queue_head->level=level;
-            send_queue_head->front=send_queue_head;
-            send_queue_head->next=send_queue_head;
+    if(ins==NULL||head==NULL)return -1;
+    if(head->queue==NULL){
+            head->queue=malloc(sizeof (XLins_queue));
+            head->queue->ins=ins;
+            head->queue->level=level;
+            head->queue->front=head->queue;
+            head->queue->next=head->queue;
             return 1;
-            break;
-        case QUEUE_INS_RECV:
-            level=0;
-            if(recv_queue_head!=NULL)break;
-            recv_queue_head=malloc(sizeof (XLins_queue));
-            recv_queue_head->ins=ins;
-            recv_queue_head->level=level;
-            recv_queue_head->front=recv_queue_head;
-            recv_queue_head->next=recv_queue_head;
-            return 1;
-            break;
-        case QUEUE_TOTAL:
-            level=0;
-            if(total_queue_head!=NULL)break;
-            total_queue_head=malloc(sizeof (XLins_queue));
-            total_queue_head->ins=ins;
-            total_queue_head->level=level;
-            total_queue_head->front=total_queue_head;
-            total_queue_head->next=total_queue_head;
-            return 1;
-            break;
-        default:
-            return -1;
-            break;
     }
-    XLins_queue * queue_head=get_head_of_queue(queue);
+    XLins_queue * queue_head=head->queue;
 
     XLins_queue * ins_now=queue_head;
     while (1) {
@@ -542,7 +474,7 @@ int queue_add(uint queue,XLins * ins,LEVEL level)
 
             ins_new->ins=ins;
             ins_new->level=level;
-            if(ins_now==queue_head)change_head_of_queue(queue,ins_new);
+            if(ins_now==queue_head)head->queue=ins_new;
 
             return 1;
         }
@@ -564,8 +496,9 @@ int queue_add(uint queue,XLins * ins,LEVEL level)
     return 0;
 }
 
-void queue_show(int queue){
-    XLins_queue * queue_head=get_head_of_queue(queue);
+void queue_show(XLins_queue_head * head){
+    if(head==NULL)return;
+    XLins_queue * queue_head=head->queue;
     if(queue_head==NULL)
     {
         printf("no!\n");
@@ -578,4 +511,21 @@ void queue_show(int queue){
         ins_now=ins_now->next;
     }
     printf("\n");
+}
+
+XLins_queue_head * queue_total(void)
+{
+    extern XLins_queue_head total_queue_head;
+    return &total_queue_head;
+}
+
+XLins_queue_head * queue_send(void)
+{
+    extern XLins_queue_head send_queue_head;
+    return &send_queue_head;
+}
+XLins_queue_head * queue_recv(void)
+{
+    extern XLins_queue_head recv_queue_head;
+    return &recv_queue_head;
 }

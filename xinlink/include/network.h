@@ -29,19 +29,15 @@
 #define SEE_RECEIVER_ONLY 3
 
 
-#define QUEUE_TOTAL 0
-#define QUEUE_INS_SEND 1
-#define QUEUE_INS_SEND_ACCEPT_LEVEL 1
-#define QUEUE_INS_RECV 2
-
 XLnet * network_get_local_info(void);
 XLins * ins_decode_data(DATA *data);
 
-XLins_queue * get_head_of_queue(uint queue);
-int change_head_of_queue(uint queue,XLins_queue *queue_replace);
-int queue_del(uint queue);
-int queue_add(uint queue,XLins * ins,LEVEL level);
-void queue_show(int queue);
+int queue_del(XLins_queue_head *head);
+int queue_add(XLins_queue_head * head,XLins * ins,LEVEL level);
+void queue_show(XLins_queue_head * head);
+XLins_queue_head * queue_total(void);
+XLins_queue_head * queue_send(void);
+XLins_queue_head * queue_recv(void);
 
 void * ins_recv_thread(void *arg);
 void *ins_send_thread(void* arg);

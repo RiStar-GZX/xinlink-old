@@ -115,23 +115,83 @@ int ins_send_to_event(XLins * ins){
     int sender_mode,receiver_mode;
     sender_mode=ins->mode&SEE_SENDER_ONLY;
     receiver_mode=ins->mode&SEE_RECEIVER_ONLY;
-
+    printf("1\n");
     if(receiver_mode==NETWORK_MODE_RECEIVER_START_EVENT)
     {
-        XLapp * app=app_get_by_name(ins->recv_app_name);
-        if(app==NULL)return -1;
-        //app->event(ins);
-        printf("here!\n");
-        event_id_t event_id=event_create(app->event);
 
+        XLapp * app=app_get_by_name(ins->receiver.name);
+        if(app==NULL)return -1;
+
+
+        event_id_t event_id=event_create(app->event);
         if(event_id<=0)return -1;
-        event_run(event_id,ins);
+        XLevent_list *event_list=event_get_by_id(event_id);
+
+        if(event_list==NULL)return -1;
+        printf("2\n");
+        queue_show(&event_list->head);
+        //queue_add(&event_list->head,ins,0);
+
+        printf("2\n");
+        event_run(event_id);
     }
     if(receiver_mode==NETWORK_MODE_RECEIVER_EVENT_ID)
     {
         EVENT event;
-        event=event_get_by_id(ins->recv_event_id);
-
+        event=event_get_by_id(ins->receiver.id);
     }
+    return 1;
+}
+
+int ins_sender_set_id(XLins * ins,int mode,int id){
+    if(ins==NULL)return -1;
+    if(mode!=MODE_EVENT_ID&&mode!=MODE_DEV_ID&&mode!=MODE_ACCESS_ID)return -1;
+    ins->sender.mode=mode;
+    ins->sender.id=id;
+    return id;
+}
+
+int ins_recevier_set_id(XLins * ins,int mode,int id){
+    if(ins==NULL)return -1;
+    if(mode!=MODE_EVENT_ID&&mode!=MODE_DEV_ID&&mode!=MODE_ACCESS_ID)return -1;
+    ins->receiver.mode=mode;
+    ins->receiver.id=id;
+    return id;
+}
+
+int ins_recevier_set_appname(XLins * ins,str *name){
+    if(ins==NULL)return -1;
+    ins->receiver.mode=MODE_APP_NAME;
+    strcpy(ins->receiver.name,name);
+    return 1;
+}
+
+XLins_queue_head * monitor(XLsource * sender,XLsource *recevier)
+{
+    extern XLins_queue * total_queue_head;
+    XLins_queue * queue_now=total_queue_head;
+    if(queue_now==NULL)return NULL;
+    XLins_queue_head * queue_head=malloc(sizeof (XLins_queue_head));
+    XLsource * sender_now;
+    XLsource * recevier_now;
+    while (1) {
+        int a=0;
+        sender_now=&queue_now->ins->sender;
+        recevier_now=&queue_now->ins->receiver;
+        if(sender==NULL)a++;
+        else if(sender_now->mode==MODE_APP_NAME&&strcmp(sender_now->name,sender->name)==0)a++;
+        else if(sender_now->mode==sender->mode&&sender_now->id==sender->id)a++;
+        else a=0;
+
+        if(recevier==NULL)a++;
+        else if(recevier_now->mode==MODE_APP_NAME&&strcmp(recevier_now->name,recevier->name)==0)a++;
+        else if(recevier_now->mode==recevier->mode&&recevier_now->id==recevier->id)a++;
+        else a=0;
+
+        if(a==2)queue_add(queue_head,queue_now->ins,0);
+        if(queue_now->next==total_queue_head)break;
+        queue_now=queue_now->next;
+    }
+    return queue_head;
 }
 

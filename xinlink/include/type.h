@@ -87,18 +87,21 @@ typedef struct XLdev_list{
 }XLdev_list;
 //----------INS----------//
 
-
-
+typedef struct XLsource{
+    //mode:device_id,event_id,access_id,app_name
+    int mode;
+    int id;
+    str name[APP_NAME_LENGTH];
+}XLsource;
 
 typedef struct XLins{
     int mode;
     //sender core
     int core_id;
-    //sender device
-    event_id_t send_event_id;
-    //my device
-    event_id_t recv_event_id;
-    str recv_app_name[APP_NAME_LENGTH];
+    //sender
+    XLsource sender;
+    //receiver
+    XLsource receiver;
     //instruction
     INS * INS;
 }XLins;
@@ -129,6 +132,9 @@ typedef struct XLins_queue {
     struct XLins_queue * next;
 }XLins_queue;
 
+typedef struct XLins_queue_head {
+    XLins_queue * queue;
+}XLins_queue_head;
 //----------CORE----------//
 
 typedef struct XLcore {
@@ -142,7 +148,7 @@ typedef struct XLcore_list {
     struct XLcore_list * next;
 }XLcore_list;
 //----------APP----------//
-typedef  INS *(*EVENT)(XLins * ins);
+typedef  INS *(*EVENT)(XLins_queue_head * head);
 
 typedef struct XLapp{
     str name[APP_NAME_LENGTH];
@@ -159,11 +165,12 @@ typedef struct XLapp_list{
 typedef struct XLevent_list{
     event_id_t id;
     EVENT event;
+    XLins_queue_head head;
     struct XLevent_list * next;
 }XLevent_list;
 
 typedef struct XLevent_thread_arg{
-    XLins ins;
+    XLins_queue_head head;
     EVENT event;
 }XLevent_thread_arg;
 
