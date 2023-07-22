@@ -8,16 +8,37 @@ int core_init(void)
     core_list_head.core=malloc(sizeof (XLcore));
     core_list_head.next=NULL;
     core_list_head.core->id=1;
-    core_list_head.core->net=*network_get_local_info();
+    core_list_head.core->net=network_get_local_info();
+    core_list_head.core->safety=1;
+    strcpy(core_list_head.core->name,"core1");
+    return 1;
+}
+
+
+int xinlink_init(void)
+{
+    if(core_init()<=0)return -1;
+    queue_init();
+    if(network_thread_init()<=0)return -1;
     return 1;
 }
 
 int core_add(XLnet * net,str * name)
 {
+    if(net==NULL||name==NULL)return -1;
     int id=1,mode=0;
     if(net->port==0)return -1;
     extern XLcore_list core_list_head;
     XLcore_list * core_now=&core_list_head,*core_front=core_now;
+    while (1) {
+        if(core_now->core->net.ip==net->ip){
+            strcpy(core_now->core->name,name);
+            return -2;
+        }
+        if(core_now->next==NULL)break;
+        core_now=core_now->next;
+    }
+    core_now=&core_list_head;
     while (1)
     {
         if(id==core_now->core->id)id++;
@@ -36,6 +57,7 @@ int core_add(XLnet * net,str * name)
     strcpy(core_new->core->name,name);
     core_new->core->net=*net;
     core_new->core->id=id;
+    core_new->core->safety=CORE_STATE_UNVERIFIED;
 
     if(mode==1)
     {
@@ -52,11 +74,15 @@ int core_add(XLnet * net,str * name)
 
 void core_list(void)
 {
-    printf("core list:");
+    printf("core info\n");
     extern XLcore_list core_list_head;
     XLcore_list * core_now=&core_list_head;
     while (1) {
-        printf("%d ",core_now->core->id);
+        printf("CORE_NAME:%s | CORE_ID:%d",core_now->core->name,core_now->core->id);
+        if(core_now->core->id==1)printf(" | CORE_STATE:LOCAL\n");
+        else if(core_now->core->safety==CORE_STATE_UNVERIFIED)printf(" | CORE_STATE:UNVERIFIED\n");
+        else if(core_now->core->safety==CORE_STATE_VERIFIED)printf(" | CORE_STATE:VERIFIED\n");
+        else if(core_now->core->safety==CORE_STATE_WAITTING)printf(" | CORE_STATE:WAITTING\n");
         if(core_now->next==NULL)break;
         core_now=core_now->next;
     }
@@ -80,7 +106,6 @@ int core_remove(core_id_t id)
         core_front=core_now;
         core_now=core_now->next;
     }
-    printf("no!\n");
     return  -2;
 }
 
@@ -124,4 +149,26 @@ XLcore * core_get_by_name(str * name)
         core_now=core_now->next;
     }
     return NULL;
+}
+
+int core_rename(core_id_t id,str * name)
+{
+    if(id==0)return -1;
+    extern XLcore_list core_list_head;
+    XLcore_list * core_now=&core_list_head;
+    if(core_now==NULL)return -1;
+    while (1) {
+        if(strcmp(core_now->core->name,name)==0)
+        {
+            //name is same
+            if(id==core_now->core->id)return 2;
+            else return -1;
+        }
+        if(core_now->next==NULL)break;
+        core_now=core_now->next;
+    }
+    XLcore * core=core_get_by_id(id);
+    if(core==NULL)return -1;
+    strcpy((str*)core->name,name);
+    return 1;
 }
