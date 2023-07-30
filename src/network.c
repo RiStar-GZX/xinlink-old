@@ -28,42 +28,42 @@ void data_show(DATA *data,uint size){
 
 //从一个结构体（*_struct）中复制（size）个大小的数据到另一个地址（* data），并将指针（*p）大小加上size
 void data_add(DATA *data,int * p,void * _struct,uint size){
-    if(data==NULL||p==NULL||_struct==NULL)return;
+    if(data==NULL||_struct==NULL)return;
     DATA * data_p=data;
-    data_p+=*p;
+    if(p!=NULL)data_p+=*p;
     int i;
     for(i=0;i<size;i++){
         *data_p=*(DATA*)_struct;
         data_p++;
         _struct++;
     }
-    *p+=i;
+    if(p!=NULL)*p+=i;
 }
 
 //将字符串（*str）复制到另一个地址（* data），并将指针（*p）大小加上字符串的大小
-void data_add_str(DATA *data,int * p,str * str){
+void data_add_str(DATA *data,int * p,char * str){
     data_add(data,p,str,strlen(str)+1);
 }
 
 //从一个地址数据（*data）中复制（size）个位到（* _struct），并将指针（*p）大小加上size
 void data_get(DATA *data,int * p,void * _struct,uint size){
-    if(data==NULL||p==NULL||_struct==NULL)return;
+    if(data==NULL||_struct==NULL)return;
     DATA * data_p=data,*struct_p=_struct;
-    data_p+=*p;
+    if(p!=NULL)data_p+=*p;
     int i;
     for(i=0;i<size;i++){
         *struct_p=*data_p;
         data_p++;
         struct_p++;
     }
-    *p+=i;
+    if(p!=NULL)*p+=i;
 }
 
 //从一个地址数据（*data）中自动发现字符串并复制到（* str），并将指针（*p）大小加上size
-str * data_get_str(DATA *data,int *p){
+char * data_get_str(DATA *data,int *p){
     int len=strlen(data+*p)+1;
     if(len>128)return NULL;
-    str *s=malloc(sizeof(str)*len);
+    char *s=malloc(sizeof(char)*len);
     data_get(data,p,s,len);
     return s;
 }
@@ -84,8 +84,8 @@ XLnet network_get_local_info(void)
     //if(fgets(ip,15,fd)==NULL)printf("ip fail!\n");
     //printf("ip:%s\n",ip);
     //net_info.ip=inet_addr(ip);
-    net_info.ip=inet_addr("192.168.0.103");
-    //net_info.ip=inet_addr("192.168.1.13");
+    //net_info.ip=inet_addr("192.168.0.103");
+    net_info.ip=inet_addr("192.168.1.16");
 
     //net_info->mac=;
     net_info.port=8081;
@@ -206,7 +206,7 @@ void * ins_send_thread(void * arg){
                 break;
             }
         }
-        queue_del(queue_send());
+        queue_del_head(queue_send());
         usleep(10000);//没有这个延时程序会崩
     }
 }
@@ -245,6 +245,10 @@ void * ins_recv_thread(void * arg)
             }
             printf("[%s - %d]: %s\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port), data);    //调试
 
+            XLnet net;
+            net.port=clientaddr.sin_port;
+            net.ip=clientaddr.sin_addr.s_addr;
+
             //解码buf
             uint16_t mode=*(uint16_t*)data;
             uint16_t type=mode>>12;
@@ -281,7 +285,7 @@ void * ins_recv_thread(void * arg)
                 }
             }
             //数据包的模式是接收
-            if(type==NETWORK_MODE_INS){
+            if(type==NETWORK_MODE_INS&&network_safe(&net)>0){
                 printf("接收到了一条指令\n");
                 XLpak_ins *pak_ins;
                 if((pak_ins=buf_to_pak_ins(data))!=NULL)queue_add_ins(queue_total(),pak_ins,0);
@@ -315,7 +319,7 @@ void * broadcast_send_thread(void * arg){
                 break;
             }
         }
-        queue_del(queue_broadcast());
+        queue_del_head(queue_broadcast());
         usleep(10000);
     }
 }
@@ -374,7 +378,7 @@ void * total_thread(void * arg)
                 ins_send_to_event(&queue_head->queue->in.pak_ins);
             }
         }
-        queue_del(queue_total());
+        queue_del_head(queue_total());
         usleep(100);
     }
 }
@@ -402,7 +406,7 @@ int network_thread_init(void)
 //----------------------------------------------//
 
 //删除队列中的队头成员，输入的是队头的指针
-int queue_del(XLqueue_head *head)
+int queue_del_head(XLqueue_head *head)
 {
     if(head==NULL)return -1;
     XLqueue * queue_head=head->queue;
@@ -421,11 +425,36 @@ int queue_del(XLqueue_head *head)
     return 1;
 }
 
+int queue_del_queue(XLqueue_head *head,XLqueue * queue)
+{
+    if(head==NULL)return -1;
+    XLqueue * queue_now=head->queue;
+    if(queue_now==NULL)return -1;
+
+    if(queue_now==queue&&queue_now->next==queue_now){
+        free(queue_now);
+        head->queue=NULL;
+        return 1;
+    }
+    while(1)
+    {
+        if(queue_now==queue){
+            queue_now->next->front=queue_now->front;
+            queue_now->front->next=queue_now->next;
+            free(queue_now);
+            return 1;
+        }
+        if(queue_now->next==head->queue)return -1;
+        queue_now=queue_now->next;
+    }
+    return -1;
+}
+
 int queue_remove_all(XLqueue_head * head){
     if(head==NULL)return -1;
     while(1)
     {
-        if(queue_del(head)<=0)return 1;
+        if(queue_del_head(head)<=0)return 1;
     }
 }
 
@@ -579,14 +608,14 @@ XLpak_ins * buf_to_pak_ins(DATA * buf){
     data_get(buf,&p,pak_ins,sizeof(XLpak_base));
 
     //sender source
-    data_get(buf,&p,&pak_ins->sender,sizeof(XLsource)-sizeof(str*));
-    if(pak_ins->base.mode==SIGN&&(pak_ins->sender.name=data_get_str(buf,&p))==NULL){
+    data_get(buf,&p,&pak_ins->sender,sizeof(XLsource)-sizeof(char*));
+    if(pak_ins->base.mode==SIGN_NAME&&(pak_ins->sender.name=data_get_str(buf,&p))==NULL){
         free(pak_ins);
         return NULL;
     }
 
     //receiver source
-    data_get(buf,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(str*));
+    data_get(buf,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(char*));
     if((pak_ins->receiver.mode==RECEIVER_START_APP||pak_ins->receiver.mode==RECEIVER_SIGN)&&
             (pak_ins->receiver.name=data_get_str(buf,&p))==NULL){
         free(pak_ins);
@@ -603,8 +632,8 @@ DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
     if(pak_ins==NULL||size==NULL)return NULL;
     int pak_size;
     //measure packet size
-    pak_size=sizeof(XLpak_ins)-sizeof(str*)*3;
-    if(pak_ins->sender.mode==SIGN)
+    pak_size=sizeof(XLpak_ins)-sizeof(char*)*3;
+    if(pak_ins->sender.mode==SIGN_NAME)
     {
         if(pak_ins->sender.name!=NULL)pak_size+=strlen(pak_ins->sender.name)+1;
         else return NULL;
@@ -621,10 +650,10 @@ DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
     //Write into packet
     int p=0;
     data_add(data,&p,&pak_ins->base,sizeof(XLpak_base));
-    data_add(data,&p,&pak_ins->sender,sizeof(XLsource)-sizeof(str*));
-    if(pak_ins->sender.mode==SIGN)
+    data_add(data,&p,&pak_ins->sender,sizeof(XLsource)-sizeof(char*));
+    if(pak_ins->sender.mode==SIGN_NAME)
         data_add_str(data,&p,pak_ins->sender.name);
-    data_add(data,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(str*));
+    data_add(data,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(char*));
     if(pak_ins->receiver.mode==RECEIVER_SIGN||pak_ins->receiver.mode==RECEIVER_START_APP)
         data_add_str(data,&p,pak_ins->receiver.name);
     if(pak_ins->ins!=NULL)
@@ -668,10 +697,16 @@ DATA * pak_connect_to_buf(XLpak_connect * pak_connect,int * size){
 //网络检查，看看传入数据包标记的ip是否和传入的主机ip一致
 int network_check(DATA * data,XLnet * net){
     if(data==NULL||net==NULL)return -2;
-    int p;
     XLpak_base base;
-    data_get(data,&p,&base,sizeof(XLpak_base));
+    data_get(data,NULL,&base,sizeof(XLpak_base));
     if(base.net_sender.ip!=net->ip)return -1;
+    return 1;
+}
+
+int network_safe(XLnet *net){
+    if(net==NULL)return -1;
+    XLcore * core=core_get_by_net(net);
+    if(core==NULL||core->safety!=CORE_STATE_VERIFIED)return -1;
     return 1;
 }
 
@@ -683,8 +718,8 @@ int network_core_find_send(void){
 
     XLcore * mycore=core_get_by_id(CORE_MYSELF_ID);
     if(mycore==NULL)return -1;
-    pak.core_name=(str*)&mycore->name;
-    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(str*)+strlen(mycore->name)+1;
+    pak.core_name=(char*)&mycore->name;
+    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(char*)+strlen(mycore->name)+1;
     queue_add_connect(queue_broadcast(),&pak,0);
     return 1;
 }
@@ -704,8 +739,8 @@ int network_core_find_receive(XLpak_connect * pak_connect){
 
     XLcore * mycore=core_get_by_id(CORE_MYSELF_ID);
     if(mycore==NULL)return -1;
-    pak.core_name=(str*)&mycore->name;
-    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(str*)+strlen(mycore->name)+1;
+    pak.core_name=(char*)&mycore->name;
+    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(char*)+strlen(mycore->name)+1;
     queue_add_connect(queue_send(),&pak,0);
     return ret;
 }
@@ -722,7 +757,7 @@ int network_core_connect_require_send(core_id_t core_id){
 
     XLcore * mycore=core_get_by_id(CORE_MYSELF_ID);
     pak.core_name=mycore->name;
-    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(str*)+strlen(mycore->name)+1;
+    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(char*)+strlen(mycore->name)+1;
     core->safety=CORE_STATE_WAITTING;
     queue_add_connect(queue_send(),&pak,0);
     return 1;
@@ -743,7 +778,7 @@ int network_core_connect_require_receive(XLpak_connect * pak_connect){
 
     XLcore * mycore=core_get_by_id(CORE_MYSELF_ID);
     pak.core_name=mycore->name;
-    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(str*)+strlen(mycore->name)+1;
+    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(char*)+strlen(mycore->name)+1;
     queue_add_connect(queue_send(),&pak,0);
     return 1;
 }
@@ -771,51 +806,32 @@ int network_core_disconnect_send(core_id_t core_id){
 
     XLcore * mycore=core_get_by_id(CORE_MYSELF_ID);
     pak.core_name=mycore->name;
-    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(str*)+strlen(mycore->name)+1;
+    pak.base.pak_size=sizeof(XLpak_connect)-sizeof(char*)+strlen(mycore->name)+1;
     core->safety=CORE_STATE_UNVERIFIED;
     queue_add_connect(queue_send(),&pak,0);
     return 1;
 }
 
 //向指定的核心发送命令
-int network_ins_send(int receiver,INS * ins){
+int network_ins(XLsource * sender,XLsource *receiver,INS * ins){
     if(ins==NULL)return -1;
     XLpak_ins pak_ins;
     pak_ins.base.mode=RECEIVER_START_APP+(ACCESS<<4)+(NETWORK_MODE_INS<<12);
-    //printf("pak_mode:%x",pak_ins.base.mode);
-    pak_ins.base.net_sender=core_get_by_id(CORE_MYSELF_ID)->net;
-    XLcore * core=core_get_by_id(receiver);
+
+    //XLcore * core=core_get_by_id(receiver_core);
+    XLcore * core=core_get_by_net(&receiver->net);
     if(core==NULL)return -1;
-    pak_ins.base.net_receiver=core->net;
-
-    pak_ins.ins=ins;
-    pak_ins.sender.name=NULL;
-    pak_ins.sender.mode=ACCESS;
-    pak_ins.receiver.mode=RECEIVER_START_APP;
-
-    pak_ins.receiver.name=ins;
-
-    pak_ins.base.pak_size=sizeof(XLpak_ins)-3*sizeof(str*)+strlen(ins)+1;
-    queue_add_ins(queue_send(),&pak_ins,0);
-    return 1;
-}
-
-
-int network_ins(XLsource * sender,XLsource *receiver,core_id_t receiver_core,INS * ins){
-    if(ins==NULL)return -1;
-    XLpak_ins pak_ins;
-    pak_ins.base.mode=RECEIVER_START_APP+(ACCESS<<4)+(NETWORK_MODE_INS<<12);
-    //printf("pak_mode:%x",pak_ins.base.mode);
+    //pak_ins.base.net_sender=network_get_local_info();
     pak_ins.base.net_sender=core_get_by_id(CORE_MYSELF_ID)->net;
-    XLcore * core=core_get_by_id(receiver_core);
-    if(core==NULL)return -1;
     pak_ins.base.net_receiver=core->net;
 
     pak_ins.sender=*sender;
+    pak_ins.sender.net=pak_ins.base.net_sender;
     pak_ins.receiver=*receiver;
+    pak_ins.receiver.net=pak_ins.base.net_receiver;
+
     pak_ins.ins=ins;
 
-    //pak_ins.base.pak_size=sizeof(XLpak_ins)-3*sizeof(str*)+strlen(ins)+1;
     queue_add_ins(queue_send(),&pak_ins,0);
     return 1;
 }

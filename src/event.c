@@ -4,7 +4,7 @@
 XLapp_list * app_list_head;
 XLevent_list * event_list_head;
 
-int app_add(str * name,EVENT event)
+int app_add(char * name,EVENT event)
 {
     app_id_t id=1;
     int mode=0;
@@ -91,24 +91,23 @@ void app_list(void)
 int app_remove(app_id_t id)
 {
     extern XLapp_list * app_list_head;
-    XLapp_list * event_now=app_list_head,*event_front=event_now;
-    if(event_now==NULL)return -2;
+    XLapp_list * app_now=app_list_head,*app_front=app_now;
+    if(app_now==NULL)return -1;
     while (1) {
-        if(id==event_now->app->id)
+        if(id==app_now->app->id)
         {
-            if(event_now==app_list_head)
-                app_list_head=event_now->next;
+            if(app_now==app_list_head)
+                app_list_head=app_now->next;
             else
-                event_front->next=event_now->next;
-            free(event_now->app);
+                app_front->next=app_now->next;
+            free(app_now->app);
             return 1;
         }
-        if(event_now->next==NULL)break;
-        event_front=event_now;
-        event_now=event_now->next;
+        if(app_now->next==NULL)break;
+        app_front=app_now;
+        app_now=app_now->next;
     }
-    printf("no!\n");
-    return  -2;
+    return  -1;
 }
 
 XLapp * app_get_by_id(app_id_t id)
@@ -124,7 +123,7 @@ XLapp * app_get_by_id(app_id_t id)
     return NULL;
 }
 
-XLapp * app_get_by_name(str * name)
+XLapp * app_get_by_name(char * name)
 {
     extern XLapp_list * app_list_head;
     XLapp_list * app_now=app_list_head;
@@ -137,7 +136,7 @@ XLapp * app_get_by_name(str * name)
     return NULL;
 }
 
-int app_set(str * name,EVENT event)
+int app_set(char * name,EVENT event)
 {
     XLapp * app_get;
     app_get=app_get_by_name(name);
@@ -210,6 +209,27 @@ event_id_t event_create(EVENT EVENT){
     return id;
 }
 
+int event_remove(event_id_t id)
+{
+    extern XLevent_list * event_list_head;
+    XLevent_list * event_now=event_list_head,*event_front=event_now;
+    if(event_now==NULL)return -1;
+    while (1) {
+        if(id==event_now->event.id)
+        {
+            if(event_now==event_list_head)
+                event_list_head=event_now->next;
+            else
+                event_front->next=event_now->next;
+            return 1;
+        }
+        if(event_now->next==NULL)break;
+        event_front=event_now;
+        event_now=event_now->next;
+    }
+    return  -1;
+}
+
 XLevent_list * event_get_by_id(event_id_t id)
 {
     extern XLevent_list * event_list_head;
@@ -226,7 +246,12 @@ XLevent_list * event_get_by_id(event_id_t id)
 void * event_thread(void * arg)
 {
     XLevent_list *event_arg=(XLevent_list *)arg;
-    event_arg->event.event(event_arg->event.mon_id);
+    XLevent_par par;
+    par.id=event_arg->event.id;
+    par.mon_id=event_arg->event.mon_id;
+    par.sign=event_arg->event.sign;
+    event_arg->event.event(&par);
+    event_remove(event_arg->event.id);
     return NULL;
 }
 

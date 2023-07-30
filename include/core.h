@@ -18,11 +18,12 @@
 
 int core_init(void);
 int xinlink_init(void);
-int core_add(XLnet * net,str * name);
+int core_add(XLnet * net,char * name);
 void core_list(void);
 int core_remove(core_id_t id);
 XLcore * core_get_by_id(core_id_t id);
 XLcore * core_get_by_net(XLnet * net);
-XLcore * core_get_by_name(str * name);
+XLcore * core_get_by_ip(IP ip);
+XLcore * core_get_by_name(char * name);
 
 #endif

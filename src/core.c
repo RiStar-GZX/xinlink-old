@@ -9,7 +9,7 @@ int core_init(void)
     core_list_head.next=NULL;
     core_list_head.core->id=1;
     core_list_head.core->net=network_get_local_info();
-    core_list_head.core->safety=1;
+    core_list_head.core->safety=CORE_STATE_VERIFIED;
     strcpy(core_list_head.core->name,"core1");
     return 1;
 }
@@ -23,7 +23,7 @@ int xinlink_init(void)
     return 1;
 }
 
-int core_add(XLnet * net,str * name)
+int core_add(XLnet * net,char * name)
 {
     if(net==NULL||name==NULL)return -1;
     int id=1,mode=0;
@@ -130,7 +130,7 @@ XLcore * core_get_by_net(XLnet * net)
     XLcore_list * core_now=&core_list_head;
     if(core_now==NULL)return NULL;
     while (1) {
-        if(net->ip==core_now->core->net.ip&&net->port==core_now->core->net.port){
+        if(net->ip==core_now->core->net.ip/*&&net->port==core_now->core->net.port*/){
             return core_now->core;}
         if(core_now->next==NULL)return NULL;
         core_now=core_now->next;
@@ -138,7 +138,20 @@ XLcore * core_get_by_net(XLnet * net)
     return NULL;
 }
 
-XLcore * core_get_by_name(str * name)
+XLcore * core_get_by_ip(IP ip){
+    extern XLcore_list core_list_head;
+    XLcore_list * core_now=&core_list_head;
+    if(core_now==NULL)return NULL;
+    while (1) {
+        if(ip==core_now->core->net.ip){
+            return core_now->core;}
+        if(core_now->next==NULL)return NULL;
+        core_now=core_now->next;
+    }
+    return NULL;
+}
+
+XLcore * core_get_by_name(char * name)
 {
     extern XLcore_list core_list_head;
     XLcore_list * core_now=&core_list_head;
@@ -151,7 +164,7 @@ XLcore * core_get_by_name(str * name)
     return NULL;
 }
 
-int core_rename(core_id_t id,str * name)
+int core_rename(core_id_t id,char * name)
 {
     if(id==0)return -1;
     extern XLcore_list core_list_head;
@@ -169,6 +182,6 @@ int core_rename(core_id_t id,str * name)
     }
     XLcore * core=core_get_by_id(id);
     if(core==NULL)return -1;
-    strcpy((str*)core->name,name);
+    strcpy((char*)core->name,name);
     return 1;
 }

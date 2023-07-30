@@ -35,14 +35,14 @@
 #define SEE_CONNECT_ONLY 15             //0010 0000 0000 0000
 
 #define EVENT_ID 1          //0001 0000 0001 ----
-#define SIGN 2              //0001 0000 0010 ----
+#define SIGN_NAME 2              //0001 0000 0010 ----
 #define SIGN_ID 3           //0001 0000 0011 ----
 #define ACCESS 4           //0001 0000 0100 ----
 
 #define RECEIVER_EVENT_ID 1        //0001 0000 ---- 0001
 #define RECEIVER_SIGN 2            //0001 0000 ---- 0010
 #define RECEIVER_SIGN_ID 3         //0001 0000 ---- 0011
-#define RECEIVER_START_APP 4     //0001 0000 ---- 0100
+#define RECEIVER_START_APP 5     //0001 0000 ---- 0100
 
 
 #define QUEUE_TYPE_NONE 0
@@ -54,7 +54,8 @@
 XLnet network_get_local_info(void);
 int Broadcast_send (void *buf,int bufsize);
 
-int queue_del(XLqueue_head *head);
+int queue_del_head(XLqueue_head *head);
+int queue_del_queue(XLqueue_head *head,XLqueue * queue);
 int queue_remove_all(XLqueue_head * head);
 int queue_add(int mode,XLqueue_head * head,XLqueue_in * in,LEVEL level);
 int queue_add_ins(XLqueue_head * head,XLpak_ins * ins,LEVEL level);
@@ -81,6 +82,6 @@ int network_core_connect_require_send(core_id_t core_id);
 int network_core_disconnect_send(core_id_t core_id);
 
 //int network_ins_send(XLsource * sender,XLsource *receiver,core_id_t receiver_core,INS *ins);
-int network_ins_send(int receiver,INS * ins);
-int network_ins(XLsource * sender,XLsource *receiver,core_id_t receiver_core,INS * ins);
+//int network_ins_send(int receiver,INS * ins);
+int network_ins(XLsource * sender,XLsource *receiver,INS * ins);
 #endif // NETWORK_H

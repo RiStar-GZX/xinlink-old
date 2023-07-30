@@ -34,11 +34,11 @@ typedef    short      int      int16;
 #ifndef int32_t
 typedef               int      int32;
 #endif
-
+/*
 #ifndef str
-typedef char str;
+typedef char char;
 #endif
-
+*/
 #ifndef core_id_t
 typedef int core_id_t;
 #endif
@@ -49,7 +49,7 @@ typedef int      dev_id_t;
 
 
 #ifndef INS
-typedef str INS;
+typedef char INS;
 #endif
 #ifndef DATA
 typedef uint8_t DATA;
@@ -82,16 +82,7 @@ typedef unsigned int      event_id_t;
 typedef unsigned int      mon_id_t;
 #endif
 
-//----------DEV----------//
 //----------INS----------//
-
-typedef struct XLsource{
-    //mode:device_id,event_id,access_id,app_name
-    int mode;
-    int id;
-    str * name;
-    //str name[APP_NAME_LENGTH];
-}XLsource;
 
 typedef  struct XLins_decoded_data{
     //str * data_name[64];
@@ -112,6 +103,17 @@ typedef struct XLnet {
     PORT port;
 }XLnet;
 
+typedef struct XLsource{
+    int mode;
+    int id;
+    XLnet net;
+    char * name;
+}XLsource;
+
+typedef struct XLsource_list{
+    XLsource source;
+    struct XLsource_list * next;
+}XLsource_list;
 
 
 //----------NETWORK_PACKET----------//
@@ -133,7 +135,7 @@ typedef struct XLpak_ins{
 
 typedef struct XLpak_connect{
     XLpak_base base;
-    str * core_name;
+    char * core_name;
 }XLpak_connect;
 
 typedef struct XLpak_signinfo{
@@ -160,7 +162,7 @@ typedef struct XLqueue_head {
 //----------CORE----------//
 
 typedef struct XLcore {
-    str name[CORE_NAME_LENGTH];
+    char name[CORE_NAME_LENGTH];
     core_id_t id;
     XLnet net;
     uint8_t safety;
@@ -172,10 +174,30 @@ typedef struct XLcore_list {
 }XLcore_list;
 
 //----------APP----------//
-typedef  INS *(*EVENT)(mon_id_t mon_id);
+typedef struct XLsign{
+    char name[64];
+    void * s;
+    int size;
+}XLsign;
+
+typedef struct XLevent_par{
+    event_id_t id;
+    mon_id_t mon_id;
+    XLsign * sign;
+}XLevent_par;
+
+typedef  INS *(*EVENT)(XLevent_par * par);
+
+typedef struct XLevent{
+    event_id_t id;
+    mon_id_t mon_id;
+    EVENT event;
+    XLsign * sign;
+}XLevent;
+
 
 typedef struct XLapp{
-    str name[APP_NAME_LENGTH];
+    char name[APP_NAME_LENGTH];
     app_id_t id;
     EVENT event;
 }XLapp;
@@ -185,18 +207,7 @@ typedef struct XLapp_list{
     struct XLapp_list * next;
 }XLapp_list;
 
-typedef struct XLsign{
-    str name[64];
-    void * s;
-    int size;
-}XLsign;
 
-typedef struct XLevent{
-    event_id_t id;
-    mon_id_t mon_id;
-    EVENT event;
-    XLsign * sign;
-}XLevent;
 
 typedef struct XLevent_list{
     //event_id_t id;
@@ -217,7 +228,8 @@ typedef struct XLevent_thread_arg{
 
 typedef struct XLmonitor{
     mon_id_t id;
-    XLsource sender;
+    //XLsource sender;
+    XLsource_list * list;
     XLsource receiver;
     XLqueue_head queue_head;
 }XLmonitor;
