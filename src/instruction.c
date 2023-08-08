@@ -135,14 +135,14 @@ int ins_send_to_event(XLpak_ins * ins){
     int AC=0,SA_mon_id=0;   //同意标识符，AC=1
 
     //指令为启动指定APP
-    if(ins->receiver.mode==RECEIVER_START_APP)
+    if(ins->receiver.mode==START_APP)
     {
 
         XLapp * app=app_get_by_name(ins->receiver.name);
         if(app==NULL)return -1;
         event_id_t event_id=event_create(app->event);
         if(event_id<=0)return -1;
-        SA_mon_id=event_get_by_id(event_id)->event.mon_id;
+        SA_mon_id=event_get_by_id(event_id)->mon_id;
         printf("mo:%d\n",SA_mon_id);
         //运行事件(会在另一个线程中运行事件）
         event_run(event_id);
@@ -159,7 +159,7 @@ int ins_send_to_event(XLpak_ins * ins){
 
         if(AC&&monitor_now->monitor->id==SA_mon_id)num++;   //启动应用的时候
         else if(source->mode==ins->receiver.mode){
-            if((source->mode==EVENT_ID||source->mode==ACCESS||source->mode==SIGN_ID)
+            if((source->mode==EVENT_ID||source->mode==ACCESS)
                 &&source->id==ins->receiver.id)num++;
             if(source->mode==SIGN_NAME&&source->id==ins->receiver.id)num++;
         }
@@ -286,6 +286,7 @@ int monitor_remove(mon_id_t id)
     return  -2;
 }
 
+
 XLmonitor * monitor_get_by_id(mon_id_t monitor_id){
     extern XLmonitor_list * monitor_head;
     XLmonitor_list * list_now=monitor_head;
@@ -301,9 +302,10 @@ XLmonitor * monitor_get_by_id(mon_id_t monitor_id){
     return NULL;
 }
 
-XLsource monitor_get_source(mon_id_t id){
+XLsource *monitor_get_source(mon_id_t id){
     XLmonitor * monitor=monitor_get_by_id(id);
-    if(monitor!=NULL)return monitor->receiver;
+    if(monitor!=NULL)return &monitor->receiver;
+    return NULL;
 }
 XLpak_ins * monitor_get_member(mon_id_t monitor_id){
     XLmonitor * monitor=monitor_get_by_id(monitor_id);
@@ -326,9 +328,21 @@ int monitor_remove_member(mon_id_t monitor_id){
     return queue_del_head(&monitor->queue_head);
 }
 
+int monitor_remove_all_member(mon_id_t monitor_id){
+    XLmonitor * monitor=monitor_get_by_id(monitor_id);
+    if(monitor==NULL)return -1;
+    queue_remove_all(&monitor->queue_head);
+    return 1;
+}
+
 int monitor_limit_add_source(mon_id_t mon_id,XLsource * source){
     XLmonitor * monitor=monitor_get_by_id(mon_id);
     if(monitor==NULL)return -1;
+
+    if(source==NULL){
+        monitor->list=NULL;
+        return 2;
+    }
 
     XLsource_list * list=malloc(sizeof(XLsource_list));
     list->next=NULL;
@@ -369,10 +383,11 @@ char * ins_get_par_str(INS * ins,char *name){
     free(decode);
     return NULL;
 }
-int ins_get_par_int(INS *ins,char* name,int defalut){
+int ins_get_par_int(INS *ins,char* name,int * val){
     char * str=ins_get_par_str(ins,name);
-    if(str==NULL)return defalut;
-    return atoi(str);
+    if(str==NULL)return -1;
+    *val=atoi(str);
+    return 1;
 }
 
 int ins_get_par_ip(INS * ins,char *name,IP * ip){
@@ -402,10 +417,6 @@ int ins_get_par_source(INS *ins,char *name,XLsource * source){
 
                 if(strcmp(str[2],"EID")==0){
                     new_source.mode=EVENT_ID;
-                    new_source.id=atoi(str[3]);
-                }
-                else if(strcmp(str[2],"SID")==0){
-                    new_source.mode=SIGN_ID;
                     new_source.id=atoi(str[3]);
                 }
                 else if(strcmp(str[2],"SN")==0){
@@ -438,12 +449,13 @@ int ins_get_par_source(INS *ins,char *name,XLsource * source){
     return -2;
 }
 
+
+
 char * ins_source_to_str(XLsource *source){
     if(source==NULL)return NULL;
     char str[40],mode[10];
     if(source->mode==EVENT_ID)strcpy(mode,"EID");
     else if(source->mode==SIGN_NAME)strcpy(mode,"SN");
-    else if(source->mode==SIGN_ID)strcpy(mode,"SID");
     sprintf(str,"%s:%d:%s:%d",inet_addr(source->net.ip),source->net.port,mode,source->id);
     return str;
 }
@@ -451,7 +463,7 @@ char * ins_source_to_str(XLsource *source){
 int source_cmp(XLsource *source1,XLsource *source2){
     int i=0;
     if(source1->mode==source2->mode)i++;
-    if((source1->mode==EVENT_ID||source1->mode==SIGN_ID||source1->mode==ACCESS)&&source1->id==source2->id)i+=1;
+    if((source1->mode==EVENT_ID||source1->mode==ACCESS)&&source1->id==source2->id)i+=1;
     if(source1->mode==SIGN_NAME&&strcmp(source1->name,source2->name)==0)i+=1;
     if(source1->net.ip==source2->net.ip)i+=1;
     printf("i:%d\n",i);

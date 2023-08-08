@@ -82,6 +82,10 @@ typedef unsigned int      event_id_t;
 typedef unsigned int      mon_id_t;
 #endif
 
+#ifndef sign_id_t
+typedef unsigned int      sign_id_t;
+#endif
+
 //----------INS----------//
 
 typedef  struct XLins_decoded_data{
@@ -138,14 +142,27 @@ typedef struct XLpak_connect{
     char * core_name;
 }XLpak_connect;
 
+
 typedef struct XLpak_signinfo{
-    XLpak_base base;
+    //uint8_t size; //名字和类型总和
+    char * name;
+    char * type;
+    struct XLpak_signinfo * next;
 }XLpak_signinfo;
+
+typedef struct XLpak_sign{
+    XLpak_base base;
+    uint8_t sign_num;
+    XLpak_signinfo * sign_list;
+}XLpak_sign;
+
+
 //----------QUEUE----------//
 
 typedef union XLqueue_in{
     XLpak_ins pak_ins;
     XLpak_connect pak_connect;
+    XLpak_sign pak_sign;
 }XLqueue_in;
 
 typedef struct XLqueue {
@@ -159,6 +176,19 @@ typedef struct XLqueue {
 typedef struct XLqueue_head {
     XLqueue * queue;
 }XLqueue_head;
+
+typedef struct XLsign{
+    char * name;
+    char * type;
+    void * contrast;
+    int contrast_size;
+}XLsign;
+
+typedef struct XLsign_list{
+    XLsign sign;
+    struct XLsign_list * next;
+}XLsign_list;
+
 //----------CORE----------//
 
 typedef struct XLcore {
@@ -166,6 +196,7 @@ typedef struct XLcore {
     core_id_t id;
     XLnet net;
     uint8_t safety;
+    XLsign_list * sign_list;
 }XLcore;
 
 typedef struct XLcore_list {
@@ -174,11 +205,7 @@ typedef struct XLcore_list {
 }XLcore_list;
 
 //----------APP----------//
-typedef struct XLsign{
-    char name[64];
-    void * s;
-    int size;
-}XLsign;
+
 
 typedef struct XLevent_par{
     event_id_t id;
@@ -194,7 +221,6 @@ typedef struct XLevent{
     EVENT event;
     XLsign * sign;
 }XLevent;
-
 
 typedef struct XLapp{
     char name[APP_NAME_LENGTH];

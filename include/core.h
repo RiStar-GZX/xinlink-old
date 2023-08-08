@@ -25,5 +25,6 @@ XLcore * core_get_by_id(core_id_t id);
 XLcore * core_get_by_net(XLnet * net);
 XLcore * core_get_by_ip(IP ip);
 XLcore * core_get_by_name(char * name);
-
+int core_add_sign(core_id_t core_id,XLsign_list * sign_list,int mode);
+XLpak_signinfo *core_get_sign(core_id_t core_id);
 #endif

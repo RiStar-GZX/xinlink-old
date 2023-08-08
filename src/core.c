@@ -58,7 +58,7 @@ int core_add(XLnet * net,char * name)
     core_new->core->net=*net;
     core_new->core->id=id;
     core_new->core->safety=CORE_STATE_UNVERIFIED;
-
+    core_new->core->sign_list=NULL;
     if(mode==1)
     {
         core_front->next=core_new;
@@ -184,4 +184,83 @@ int core_rename(core_id_t id,char * name)
     if(core==NULL)return -1;
     strcpy((char*)core->name,name);
     return 1;
+}
+
+int core_add_sign(core_id_t core_id,XLsign_list * sign_list,int mode){
+    if(sign_list==NULL||core_id!=CORE_MYSELF_ID)return -1;
+    XLcore * core=core_get_by_id(core_id);
+    if(core==NULL)return -1;
+    XLpak_signinfo * list_now=core->sign_list,*next;
+    if(mode==0){
+        while(list_now!=NULL){
+            next=list_now->next;
+            free(list_now);
+            list_now=next;
+        }
+        core->sign_list=sign_list;
+        return 1;
+    }
+    if(mode==1){
+        while(list_now!=NULL){
+            if(list_now->next==NULL){
+                list_now->next=sign_list;
+                return 1;
+            }
+        }
+        core->sign_list=sign_list;
+        return 1;
+    }
+    return -1;
+}
+
+int core_remove_sign(core_id_t core_id,char * name){
+    if(core_id==CORE_MYSELF_ID)return -1;
+}
+
+int core_sign_remove_all(core_id_t core_id){
+    if(core_id==CORE_MYSELF_ID)return -1;
+    XLcore * core=core_get_by_id(core_id);
+    if(core==NULL)return -1;
+    XLsign_list * list_now=core->sign_list,*next;
+    while(list_now!=NULL){
+        next=list_now->next;
+        free(list_now);
+        list_now=next;
+    }
+    core->sign_list=NULL;
+    return 1;
+}
+
+XLpak_signinfo *  core_get_sign(core_id_t core_id){
+    if(core_id==CORE_MYSELF_ID){
+        extern XLevent_list * event_list_head;
+        XLevent_list * event_now=event_list_head;
+        XLpak_signinfo * sign_now=NULL;
+        while(event_now!=NULL){
+            if(event_now->event.sign!=NULL){
+                if(sign_now==NULL){
+                    sign_now=malloc(sizeof(XLpak_signinfo));
+                    sign_now->name=event_now->event.sign->name;
+                    sign_now->type=event_now->event.sign->type;
+                    sign_now->next=NULL;
+                }
+                else {
+                    XLpak_signinfo * sign_new=malloc(sizeof(XLpak_signinfo));
+                    sign_new->name=event_now->event.sign->name;
+                    sign_new->type=event_now->event.sign->type;
+                    sign_new->next=NULL;
+                    sign_now->next=sign_new;
+                    sign_now=sign_new;
+                }
+                printf("\nname:%s\ntype:%s\n",sign_now->name,sign_now->type);
+            }
+            event_now=event_now->next;
+        }
+
+        return sign_now;
+    }
+
+    XLcore * core=core_get_by_id(core_id);
+    if(core==NULL)return NULL;
+    return core->sign_list;
 }

@@ -85,7 +85,7 @@ XLnet network_get_local_info(void)
     //printf("ip:%s\n",ip);
     //net_info.ip=inet_addr(ip);
     //net_info.ip=inet_addr("192.168.0.103");
-    net_info.ip=inet_addr("192.168.1.16");
+    net_info.ip=inet_addr("192.168.1.15");
 
     //net_info->mac=;
     net_info.port=8081;
@@ -128,7 +128,7 @@ int TCP_send(XLnet * net,DATA * data,int datasize)
     {
         perror("fail to sendto");
     }
-    //printf("TCP send\n");
+    printf("TCP send\n");
     //第四步：关闭套接字文件描述符
     close(sockfd);
     return 1;
@@ -184,9 +184,7 @@ void * ins_send_thread(void * arg){
             //发送的包为指令
             if(queue_now->mode==QUEUE_TYPE_INS){
                 XLcore *core=core_get_by_net(&queue_now->in.pak_ins.base.net_receiver);
-
                 if(core==NULL)break;
-
                 int size=0;
                 DATA * data=pak_ins_to_buf(&queue_now->in.pak_ins,&size);
                 if(size==0||data==NULL)break;
@@ -196,9 +194,16 @@ void * ins_send_thread(void * arg){
             //发送的包为对接同意
             else if(queue_now->mode==QUEUE_TYPE_CONNECT){
                 int size;
-
                 DATA * data=pak_connect_to_buf(&queue_now->in.pak_connect,&size);
                 TCP_send(&queue_now->in.pak_connect.base.net_receiver,data,size);
+                free(data);
+                break;
+            }
+            else if(queue_now->mode==QUEUE_TYPE_SIGN){
+                int size;
+                DATA * data=pak_sign_to_buf(&queue_now->in.pak_sign,&size);
+                TCP_send(&queue_now->in.pak_sign.base.net_receiver,data,size);
+                printf("SEND!\n");
                 free(data);
                 break;
             }
@@ -207,7 +212,7 @@ void * ins_send_thread(void * arg){
             }
         }
         queue_del_head(queue_send());
-        usleep(10000);//没有这个延时程序会崩
+        usleep(100);//没有这个延时程序会崩
     }
 }
 
@@ -285,11 +290,22 @@ void * ins_recv_thread(void * arg)
                 }
             }
             //数据包的模式是接收
-            if(type==NETWORK_MODE_INS&&network_safe(&net)>0){
+            else if(type==NETWORK_MODE_INS&&network_safe(&net)>0){
                 printf("接收到了一条指令\n");
                 XLpak_ins *pak_ins;
                 if((pak_ins=buf_to_pak_ins(data))!=NULL)queue_add_ins(queue_total(),pak_ins,0);
                 free(pak_ins);
+            }
+            else if(type==NETWORK_MODE_SIGN&&network_safe(&net)>0){
+                printf("接收到了一条SIGN\n");
+                XLpak_sign *pak_sign;
+                if((pak_sign=buf_to_pak_sign(data))!=NULL){
+                    XLcore * core=core_get_by_net(&pak_sign->base.net_sender);
+                    if(core!=NULL){
+                        core_add_sign(core->id,pak_sign->sign_list,0);
+                    }
+                }
+                free(pak_sign);
             }
             free(data);
         }
@@ -462,7 +478,7 @@ int queue_remove_all(XLqueue_head * head){
 int queue_add(int mode,XLqueue_head * head,XLqueue_in * in,LEVEL level)
 {
     if(in==NULL||head==NULL)return -1;
-    if(mode!=QUEUE_TYPE_CONNECT&&mode!=QUEUE_TYPE_INS)return -1;
+    if(mode!=QUEUE_TYPE_CONNECT&&mode!=QUEUE_TYPE_INS&&mode!=QUEUE_TYPE_SIGN)return -1;
 
     XLqueue * queue_new=malloc(sizeof (XLqueue));
     memset(queue_new,0,sizeof(XLqueue));
@@ -537,6 +553,11 @@ int queue_add_connect(XLqueue_head * head,XLpak_connect * connect,LEVEL level){
     return queue_add(QUEUE_TYPE_CONNECT,head,&in,level);
 }
 
+int queue_add_sign(XLqueue_head * head,XLpak_sign * sign,LEVEL level){
+    XLqueue_in in;
+    in.pak_sign=*sign;
+    return queue_add(QUEUE_TYPE_SIGN,head,&in,level);
+}
 //展示队列中的成员（仅作调试用）
 void queue_show(XLqueue_head * head){
     if(head==NULL)return;
@@ -616,7 +637,7 @@ XLpak_ins * buf_to_pak_ins(DATA * buf){
 
     //receiver source
     data_get(buf,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(char*));
-    if((pak_ins->receiver.mode==RECEIVER_START_APP||pak_ins->receiver.mode==RECEIVER_SIGN)&&
+    if((pak_ins->receiver.mode==START_APP||pak_ins->receiver.mode==SIGN_NAME)&&
             (pak_ins->receiver.name=data_get_str(buf,&p))==NULL){
         free(pak_ins);
         return NULL;
@@ -638,7 +659,7 @@ DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
         if(pak_ins->sender.name!=NULL)pak_size+=strlen(pak_ins->sender.name)+1;
         else return NULL;
     }
-    if(pak_ins->receiver.mode==RECEIVER_SIGN||pak_ins->receiver.mode==RECEIVER_START_APP)
+    if(pak_ins->receiver.mode==SIGN_NAME||pak_ins->receiver.mode==START_APP)
     {
         if(pak_ins->receiver.name!=NULL)pak_size+=strlen(pak_ins->receiver.name)+1;
         else return NULL;
@@ -654,7 +675,7 @@ DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
     if(pak_ins->sender.mode==SIGN_NAME)
         data_add_str(data,&p,pak_ins->sender.name);
     data_add(data,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(char*));
-    if(pak_ins->receiver.mode==RECEIVER_SIGN||pak_ins->receiver.mode==RECEIVER_START_APP)
+    if(pak_ins->receiver.mode==SIGN_NAME||pak_ins->receiver.mode==START_APP)
         data_add_str(data,&p,pak_ins->receiver.name);
     if(pak_ins->ins!=NULL)
         data_add_str(data,&p,pak_ins->ins);
@@ -689,6 +710,60 @@ DATA * pak_connect_to_buf(XLpak_connect * pak_connect,int * size){
     return data;
 }
 
+DATA * pak_sign_to_buf(XLpak_sign * pak_sign,int * size){
+    if(pak_sign==NULL||size==NULL)return 0;
+    int p=0,pak_size;
+    pak_size=sizeof(XLpak_base);
+    pak_size+=sizeof(uint8_t);
+    XLpak_signinfo * sign_now=pak_sign->sign_list;
+    while(sign_now!=NULL){
+        pak_size+=sizeof(uint8_t);
+        pak_size+=strlen(sign_now->name)+1;
+        pak_size+=strlen(sign_now->type)+1;
+        sign_now=sign_now->next;
+    }
+    printf("size:%d\n",pak_size);
+    DATA * data=malloc(pak_size);
+    data_add(data,&p,pak_sign,sizeof(XLpak_base)+sizeof(uint8_t));
+    sign_now=pak_sign->sign_list;
+
+    while(sign_now!=NULL){
+        data_add_str(data,&p,sign_now->name);
+        data_add_str(data,&p,sign_now->type);
+        sign_now=sign_now->next;
+    }
+    //data_show(data,pak_size);
+    *size=pak_size;
+    return data;
+}
+
+XLpak_sign * buf_to_pak_sign(DATA * buf){
+    if(buf==NULL)return NULL;
+    int p=0;
+    XLpak_sign * pak_sign=malloc(sizeof(XLpak_sign));
+    data_get(buf,&p,pak_sign,sizeof(XLpak_base)+sizeof(uint8_t));
+    XLpak_signinfo * signinfo_now=NULL;
+    for(int i=0;i<pak_sign->sign_num;i++)
+    {
+        XLpak_signinfo * sign_info=malloc(sizeof(XLpak_signinfo));
+        sign_info->next=NULL;
+        sign_info->name=data_get_str(buf,&p);
+        sign_info->type=data_get_str(buf,&p);
+        printf("\nname:%s\ntype:%s\n",sign_info->name,sign_info->type);
+        if(signinfo_now==NULL){
+            pak_sign->sign_list=sign_info;
+            signinfo_now=sign_info;
+        }
+        else{
+            signinfo_now->next=sign_info;
+            signinfo_now=sign_info;
+            //signinfo_now=signinfo_now->next;
+        }
+
+        signinfo_now->next=NULL;
+    }
+    return pak_sign;
+}
 
 //----------------------------------------------//
 //                  网络接口                     //
@@ -816,7 +891,7 @@ int network_core_disconnect_send(core_id_t core_id){
 int network_ins(XLsource * sender,XLsource *receiver,INS * ins){
     if(ins==NULL)return -1;
     XLpak_ins pak_ins;
-    pak_ins.base.mode=RECEIVER_START_APP+(ACCESS<<4)+(NETWORK_MODE_INS<<12);
+    pak_ins.base.mode=START_APP+(ACCESS<<4)+(NETWORK_MODE_INS<<12);
 
     //XLcore * core=core_get_by_id(receiver_core);
     XLcore * core=core_get_by_net(&receiver->net);
@@ -833,5 +908,55 @@ int network_ins(XLsource * sender,XLsource *receiver,INS * ins){
     pak_ins.ins=ins;
 
     queue_add_ins(queue_send(),&pak_ins,0);
+    return 1;
+}
+
+int network_send_sign(core_id_t core_id){
+
+    XLcore * core=core_get_by_id(core_id);
+    if(core==NULL)return -1;
+
+    XLpak_sign pak_sign;
+    pak_sign.base.net_receiver=core->net;
+
+    pak_sign.base.mode=(NETWORK_MODE_SIGN<<12);
+    pak_sign.sign_list=NULL;
+    pak_sign.base.net_sender=core_get_by_id(CORE_MYSELF_ID)->net;
+
+    int num=0;
+    extern XLevent_list * event_list_head;
+    XLevent_list * event_now=event_list_head;
+    XLpak_signinfo * sign_now=NULL,*sign_front=NULL;
+    pak_sign.sign_num=0;
+    while(event_now!=NULL){
+        if(event_now->event.sign!=NULL){
+            if(pak_sign.sign_list==NULL){
+                XLpak_signinfo * new=malloc(sizeof(XLpak_signinfo));
+                pak_sign.sign_list=new;
+
+                pak_sign.sign_list->name=event_now->event.sign->name;
+                pak_sign.sign_list->type=event_now->event.sign->type;
+                pak_sign.sign_list->next=NULL;
+                sign_now=pak_sign.sign_list;
+            }
+            else{
+                sign_now->next=malloc(sizeof(XLpak_signinfo));
+                XLpak_signinfo * sign_new=sign_now->next;
+                sign_new->next=NULL;
+                sign_new->name=event_now->event.sign->name;
+                sign_new->type=event_now->event.sign->type;
+                sign_now=sign_new;
+            }
+            pak_sign.sign_num++;
+        }
+        event_now=event_now->next;
+    }
+
+    queue_add_sign(queue_send(),&pak_sign,0);
+    //printf("sdsa:%d\n",pak_sign.sign_num);
+    //int size=0;
+    //DATA * data=pak_sign_to_buf(&pak_sign,&size);
+    //printf("ggshshs\n");
+    //buf_to_pak_sign(data);
     return 1;
 }
