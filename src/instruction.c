@@ -148,6 +148,22 @@ int ins_send_to_event(XLpak_ins * ins){
         event_run(event_id);
         AC=1;
     }
+    //模式是设备标识符
+
+    if(ins->receiver.mode==SIGN_NAME&&ins->receiver.name!=NULL){
+        extern XLevent_list * event_list_head;
+        XLevent_list * event_now=event_list_head;
+        while(event_now!=NULL){
+            if(event_now->event.sign.use==ENABLE&&event_now->event.sign.name!=NULL){
+                if(strcmp(ins->receiver.name,event_now->event.sign.name)==0){
+                    XLmonitor * monitor=monitor_get_by_id(event_now->event.mon_id);
+                    if(monitor!=NULL)
+                        queue_add_ins(&monitor->queue_head,ins,0);
+                }
+            }
+            event_now=event_now->next;
+        }
+    }
     //添加指令到各个监视器中
     extern XLmonitor_list * monitor_head;
     XLmonitor_list * monitor_now=monitor_head;
@@ -161,7 +177,13 @@ int ins_send_to_event(XLpak_ins * ins){
         else if(source->mode==ins->receiver.mode){
             if((source->mode==EVENT_ID||source->mode==ACCESS)
                 &&source->id==ins->receiver.id)num++;
-            if(source->mode==SIGN_NAME&&source->id==ins->receiver.id)num++;
+            if(source->mode==SIGN_NAME&&strcmp(source->name,ins->receiver.name)==0){
+                event_id_t event_id=sign_get_event(source->name);
+                XLevent * event=event_get_by_id(event_id);
+                if(event==NULL)return -1;
+
+                num++;
+            }
         }
         if(num==1){
             XLsource_list *list=&monitor_now->monitor->list->source;

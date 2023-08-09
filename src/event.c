@@ -160,6 +160,7 @@ event_id_t event_create(EVENT EVENT){
         memset(event_list_head,0,sizeof (XLevent_list));
         event_list_head->event.event=EVENT;
         event_list_head->event.id=1;
+        event_list_head->event.sign.use=DISABLE;
         source.id=1;
         event_list_head->event.mon_id=monitor_create(NULL,&source);
 
@@ -188,6 +189,7 @@ event_id_t event_create(EVENT EVENT){
     memset(event_new,0,sizeof (XLevent_list));
     event_new->event.id=id;
     event_new->event.event=EVENT;
+    event_new->event.sign.use=DISABLE;
     source.id=id;
     event_new->event.mon_id=monitor_create(NULL,&source);
 
@@ -249,7 +251,7 @@ void * event_thread(void * arg)
     XLevent_par par;
     par.id=event_arg->event.id;
     par.mon_id=event_arg->event.mon_id;
-    par.sign=event_arg->event.sign;
+    par.sign=&event_arg->event.sign;
     event_arg->event.event(&par);
     event_remove(event_arg->event.id);
     return NULL;
@@ -293,25 +295,23 @@ int event_add_sign(event_id_t event_id,char * sign_name,char * type){
     if(sign_name==NULL&&type==NULL)return -1;
     XLevent * event=event_get_by_id(event_id);
     if(event==NULL)return -1;
-    event->sign=malloc(sizeof(XLsign));
-    event->sign->name=malloc(sizeof(strlen(sign_name)+1));
-    strcpy(event->sign->name,sign_name);
-    event->sign->type=malloc(sizeof(strlen(type)+1));
-    strcpy(event->sign->type,type);
-    event->sign->contrast=NULL;
-    event->sign->contrast_size=-1;
+    event->sign.use=ENABLE;
+    event->sign.name=malloc(sizeof(strlen(sign_name)+1));
+    strcpy(event->sign.name,sign_name);
+    event->sign.type=malloc(sizeof(strlen(type)+1));
+    strcpy(event->sign.type,type);
+    event->sign.contrast=NULL;
+    event->sign.contrast_size=-1;
     return 1;
 }
 
 int event_remove_sign(event_id_t event_id){
     XLevent * event=event_get_by_id(event_id);
     if(event==NULL)return -1;
-    if(event->sign!=NULL){
-        if(event->sign->name!=NULL)free(event->sign->name);
-        if(event->sign->contrast!=NULL)free(event->sign->contrast);
-        if(event->sign->type!=NULL)free(event->sign->type);
-        free(event->sign);
-    }
+    if(event->sign.name!=NULL)free(event->sign.name);
+    if(event->sign.contrast!=NULL)free(event->sign.contrast);
+    if(event->sign.type!=NULL)free(event->sign.type);
+    event->sign.use=DISABLE;
     return 1;
 }
 
@@ -321,8 +321,8 @@ event_id_t sign_get_event(char * sign_name){
     extern XLevent_list * event_list_head;
     XLevent_list * event_now=event_list_head;
     while (event_now!=NULL) {
-        if(event_now->event.sign!=NULL&&event_now->event.sign->name!=NULL){
-            if(strcmp(event_now->event.sign->name,sign_name)==0)
+        if(event_now->event.sign.use==ENABLE&&event_now->event.sign.name!=NULL){
+            if(strcmp(event_now->event.sign.name,sign_name)==0)
             return event_now->event.id;
         }
         if(event_now->next==NULL)return -1;
@@ -334,5 +334,5 @@ event_id_t sign_get_event(char * sign_name){
 XLsign *event_get_sign(event_id_t event_id){
     XLevent * event=event_get_by_id(event_id);
     if(event==NULL)return NULL;
-    return event->sign;
+    return &event->sign;
 }

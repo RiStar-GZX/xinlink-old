@@ -1,6 +1,10 @@
 #ifndef TYPE_H
 #define TYPE_H
 
+
+#define ENABLE   1
+#define DISABLE  0
+
 #define CORE_NAME_LENGTH 64
 #define APP_NAME_LENGTH 64
 #define DEV_NAME_LENGTH 64
@@ -178,6 +182,7 @@ typedef struct XLqueue_head {
 }XLqueue_head;
 
 typedef struct XLsign{
+    uint8_t use; //是否使用设备标识符
     char * name;
     char * type;
     void * contrast;
@@ -219,7 +224,7 @@ typedef struct XLevent{
     event_id_t id;
     mon_id_t mon_id;
     EVENT event;
-    XLsign * sign;
+    XLsign sign;
 }XLevent;
 
 typedef struct XLapp{

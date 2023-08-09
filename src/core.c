@@ -237,17 +237,17 @@ XLpak_signinfo *  core_get_sign(core_id_t core_id){
         XLevent_list * event_now=event_list_head;
         XLpak_signinfo * sign_now=NULL;
         while(event_now!=NULL){
-            if(event_now->event.sign!=NULL){
+            if(event_now->event.sign.use==ENABLE){
                 if(sign_now==NULL){
                     sign_now=malloc(sizeof(XLpak_signinfo));
-                    sign_now->name=event_now->event.sign->name;
-                    sign_now->type=event_now->event.sign->type;
+                    sign_now->name=event_now->event.sign.name;
+                    sign_now->type=event_now->event.sign.type;
                     sign_now->next=NULL;
                 }
                 else {
                     XLpak_signinfo * sign_new=malloc(sizeof(XLpak_signinfo));
-                    sign_new->name=event_now->event.sign->name;
-                    sign_new->type=event_now->event.sign->type;
+                    sign_new->name=event_now->event.sign.name;
+                    sign_new->type=event_now->event.sign.type;
                     sign_new->next=NULL;
                     sign_now->next=sign_new;
                     sign_now=sign_new;
@@ -260,7 +260,8 @@ XLpak_signinfo *  core_get_sign(core_id_t core_id){
         return sign_now;
     }
 
-    XLcore * core=core_get_by_id(core_id);
-    if(core==NULL)return NULL;
-    return core->sign_list;
+    return NULL;
+    //XLcore * core=core_get_by_id(core_id);
+    //if(core==NULL)return NULL;
+    //return core->sign_list;
 }

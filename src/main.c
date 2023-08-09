@@ -105,7 +105,7 @@ INS * test(XLevent_par * par){
 
         if(pak_ins!=NULL)
         {
-            printf("is:%s\n",pak_ins->ins);
+            printf("[%s(%s)]is:%s\n",par->sign->name,par->sign->type,pak_ins->ins);
             if(ins_get_par(pak_ins->ins,"connect")){
                 XLsource source;
                 source.mode=EVENT_ID;
@@ -124,156 +124,13 @@ INS * test(XLevent_par * par){
 }
 
 
-//int main(int argc, char *argv[])
-//{
-//    xinlink_init();
-//    app_add("mouse",mouse_server);
-//    app_add("mousec",mouse_client);
-//    app_add("test",test);
-//    event_start("mouse");
-//    printf("Xinlink - version(0.0.1)\n");
-//    while(1)
-//    {
-//        char *a=malloc(sizeof(char)*100);
-//        printf(">");
-//        scanf("%s",a);
-//        if(strcmp(a,"findcore")==0){
-//            network_core_find_send();
-//        }
-//        else if(strcmp(a,"showcore")==0){
-//            core_list();
-//        }
-//        else if(strcmp(a,"connectcore")==0){
-//            int id;
-//            printf("core id:");
-//            scanf("%d",&id);
-//            if(network_core_connect_require_send(id)>=0)printf("Success!\n");
-//            else printf("Fail!\n");
-//        }
-//        else if(strcmp(a,"disconnect")==0){
-//            int id;
-//            printf("core id:");
-//            scanf("%d",&id);
-//            if(network_core_disconnect_send(id)>=0)printf("Success!\n");
-//            else printf("Fail!\n");
-//        }
-//        else if(strcmp(a,"disconnect")==0){
-//            int id;
-//            printf("core id:");
-//            scanf("%d",&id);
-//            if(network_core_disconnect_send(id)>=0)printf("Success!\n");
-//            else printf("Fail!\n");
-//        }
-//        else if(strcmp(a,"inss")==0){
-//            int id;
-//            char s[100];
-//            char ins[100];
-//            printf("core id:");
-//            scanf("%d",&id);
-//            printf("APP name:");
-//            scanf("%s",s);
-//            printf("INS:");
-//            scanf("%[^\n]",ins);
-//            printf("ins:%s\n",ins);
-//            XLcore *core;
-//            if((core=core_get_by_id(id))==NULL)continue;
-//            XLsource receiver,sender;
-//            receiver.name=s;
-//            receiver.net=core->net;
-//            receiver.mode=RECEIVER_START_APP;
-//            sender.mode=ACCESS;
-//            if(network_ins(&sender,&receiver,ins)>=0)printf("Success!\n");
-//            else printf("Fail!\n");
-//        }
-//        else if(strcmp(a,"insse")==0){
-//            int id,eid;
-//            char ins[100];
-//            printf("core id:");
-//            scanf("%d",&id);
-//            printf("event id:");
-//            scanf("%d",&eid);
-//            printf("ins:");
-//            scanf("%[^\n]",ins);
-//            //gets(ins);
-//            printf("ins:%s\n",ins);
-//            XLcore *core;
-//            if((core=core_get_by_id(id))==NULL)continue;
-//            XLsource receiver,sender;
-//            receiver.mode=RECEIVER_EVENT_ID;
-//            receiver.id=eid;
-//            receiver.net=core->net;
-//            sender.mode=ACCESS;
-//            sender.id=11;
-//            if(network_ins(&sender,&receiver,ins)>=0)printf("Success!\n");
-//            else printf("Fail!\n");
-//        }
-//        else if(strcmp(a,"insnb")==0){
-//            int id,eid;
-//            char ins[100];
-//            printf("core id:");
-//            scanf("%d",&id);
-//            printf("event id:");
-//            scanf("%d",&eid);
-//            printf("ins:");
-//            scanf("%s",ins);
-//            XLcore *core;
-//            if((core=core_get_by_id(id))==NULL)continue;
-//            XLsource receiver,sender;
-//            receiver.mode=RECEIVER_EVENT_ID;
-//            receiver.id=eid;
-//            receiver.net=core->net;
-//            sender.mode=EVENT_ID;
-//            sender.id=1;
-//            if(network_ins(&sender,&receiver,ins)>=0)printf("Success!\n");
-//            else printf("Fail!\n");
-//        }
-//        else if(strcmp(a,"inse")==0){
-//            int id,eid;
-//            int x,y;
-//            printf("core id:");
-//            scanf("%d",&id);
-//            printf("event id:");
-//            scanf("%d",&eid);
-//            printf("pos:");
-//            scanf("%d %d",&x,&y);
-//            XLcore *core;
-//            if((core=core_get_by_id(id))==NULL)continue;
-//            XLsource receiver,sender;
-//            receiver.mode=RECEIVER_EVENT_ID;
-//            receiver.id=eid;
-//            receiver.net=core->net;
-//            sender.mode=ACCESS;
-//            sender.id=11;
-//            char s[10];
-//            sprintf(s,"x %d y %d",x,y);
-//            if(network_ins(&sender,&receiver,s)>=0)printf("Success!\n");
-//            else printf("Fail!\n");
-//        }
-//        else if(strcmp(a,"showapp")==0){
-//            app_list();
-//        }
-//        else if(strcmp(a,"showevent")==0){
-//            event_show();
-//        }
-//        else {
-//            printf("help           寻求帮助\n");
-//            printf("findcore       寻找其他核心\n");
-//            printf("showcore       展示其他核心\n");
-//            printf("connectcore    与其他核心对接\n");
-//            printf("disconnect     断开与其他核心的连接\n");
-//            printf("inss           向指定核心发送启动指令\n");
-//            printf("showapp        展示应用\n");
-//            printf("showevent      展示事件\n");
-//            printf("inse           向指定事件发指令\n");
-//        }
-//        usleep(10000);
-//    }
-//    return 0;
-//}
-
-int main(){
+int main(int argc, char *argv[])
+{
     xinlink_init();
-
+    //app_add("mouse",mouse_server);
+    //app_add("mousec",mouse_client);
+    //app_add("test",test);
+    //event_start("mouse");
     app_add("test",test);
     event_start("test");
     event_start("test");
@@ -287,21 +144,181 @@ int main(){
     event_add_sign(4,"test4","SB");
     event_add_sign(5,"test5","SB");
     XLpak_sign pak_sign;
-    pak_sign.sign_num=1;
-    int size;
-    pak_sign.sign_list=NULL;
-    //network_send_sign(1);
-    //while(1);
-    while (1){
-        int s;
-        printf("1");
-        scanf("%d",&s);
-        if(s==1){
-            network_send_sign(1);
+    printf("Xinlink - version(0.0.1)\n");
+    while(1)
+    {
+        char *a=malloc(sizeof(char)*100);
+        printf(">");
+        scanf("%s",a);
+        if(strcmp(a,"findcore")==0){
+            network_core_find_send();
         }
-        if(s==2){
-            core_get_sign(1);
+        else if(strcmp(a,"showcore")==0){
+            core_list();
         }
+        else if(strcmp(a,"connectcore")==0){
+            int id;
+            printf("core id:");
+            scanf("%d",&id);
+            if(network_core_connect_require_send(id)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"disconnect")==0){
+            int id;
+            printf("core id:");
+            scanf("%d",&id);
+            if(network_core_disconnect_send(id)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"disconnect")==0){
+            int id;
+            printf("core id:");
+            scanf("%d",&id);
+            if(network_core_disconnect_send(id)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"inss")==0){
+            int id;
+            char s[100];
+            char ins[100];
+            printf("core id:");
+            scanf("%d",&id);
+            printf("APP name:");
+            scanf("%s",s);
+            printf("INS:");
+            scanf("%[^\n]",ins);
+            printf("ins:%s\n",ins);
+            XLcore *core;
+            if((core=core_get_by_id(id))==NULL)continue;
+            XLsource receiver,sender;
+            receiver.name=s;
+            receiver.net=core->net;
+            receiver.mode=START_APP;
+            sender.mode=ACCESS;
+            if(network_ins(&sender,&receiver,ins)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"insse")==0){
+            int id,eid;
+            char ins[100];
+            printf("core id:");
+            scanf("%d",&id);
+            printf("event id:");
+            scanf("%d",&eid);
+            printf("ins:");
+            scanf("%[^\n]",ins);
+            //gets(ins);
+            printf("ins:%s\n",ins);
+            XLcore *core;
+            if((core=core_get_by_id(id))==NULL)continue;
+            XLsource receiver,sender;
+            receiver.mode=EVENT_ID;
+            receiver.id=eid;
+            receiver.net=core->net;
+            sender.mode=ACCESS;
+            sender.id=11;
+            if(network_ins(&sender,&receiver,ins)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"insnb")==0){
+            int id,eid;
+            char ins[100];
+            printf("core id:");
+            scanf("%d",&id);
+            printf("event id:");
+            scanf("%d",&eid);
+            printf("ins:");
+            scanf("%s",ins);
+            XLcore *core;
+            if((core=core_get_by_id(id))==NULL)continue;
+            XLsource receiver,sender;
+            receiver.mode=EVENT_ID;
+            receiver.id=eid;
+            receiver.net=core->net;
+            sender.mode=EVENT_ID;
+            sender.id=1;
+            if(network_ins(&sender,&receiver,ins)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"inse")==0){
+            int id,eid;
+            int x,y;
+            printf("core id:");
+            scanf("%d",&id);
+            printf("event id:");
+            scanf("%d",&eid);
+            printf("pos:");
+            scanf("%d %d",&x,&y);
+            XLcore *core;
+            if((core=core_get_by_id(id))==NULL)continue;
+            XLsource receiver,sender;
+            receiver.mode=EVENT_ID;
+            receiver.id=eid;
+            receiver.net=core->net;
+            sender.mode=ACCESS;
+            sender.id=11;
+            char s[10];
+            sprintf(s,"x %d y %d",x,y);
+            if(network_ins(&sender,&receiver,s)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"inssi")==0){
+            int id;
+            char name[100],s[100];
+            printf("core id:");
+            scanf("%d",&id);
+            printf("sign name:");
+            scanf("%s",&name);
+            printf("ins:");
+            scanf("%s",s);
+            XLcore *core;
+            if((core=core_get_by_id(id))==NULL)continue;
+            XLsource receiver,sender;
+            receiver.mode=SIGN_NAME;
+            receiver.name=name;
+            receiver.net=core->net;
+            sender.mode=ACCESS;
+            sender.id=11;
+            if(network_ins(&sender,&receiver,s)>=0)printf("Success!\n");
+            else printf("Fail!\n");
+        }
+        else if(strcmp(a,"showapp")==0){
+            app_list();
+        }
+        else if(strcmp(a,"showevent")==0){
+            event_show();
+        }
+        else if(strcmp(a,"sendsign")==0){
+            int b;
+            scanf("%d",&b);
+            if(network_send_sign(b)>=0){
+                printf("Success!\n");
+                core_get_sign(b);
+            }
+            else printf("Fail\n");
+        }
+        else if(strcmp(a,"getsign")==0){
+            int b;
+            scanf("%d",&b);
+            if(network_require_sign(b)>=0){
+                printf("Success!\n");
+                core_get_sign(b);
+            }
+            else printf("Fail\n");
+        }
+        else {
+            printf("help(寻求帮助)          ");
+            printf("findcore(寻找核心)      ");
+            printf("showcore(展示核心)      ");
+            printf("connectcore(与核心对接)        ");
+            printf("disconnect(断开与核心的连接)    ");
+            printf("showapp(展示应用)       ");
+            printf("showevent(展示事件)     ");
+            printf("getsign(获得设备标识符)  ");
+            printf("inss(启动应用指令)       ");
+            printf("inse(向指定事件发指令)  \n");
+        }
+        usleep(10000);
     }
     return 0;
 }

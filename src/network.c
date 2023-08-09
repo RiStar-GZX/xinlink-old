@@ -297,15 +297,25 @@ void * ins_recv_thread(void * arg)
                 free(pak_ins);
             }
             else if(type==NETWORK_MODE_SIGN&&network_safe(&net)>0){
+                uint16_t r_or_s=mode&SEE_FOUR_ONLY;
                 printf("接收到了一条SIGN\n");
-                XLpak_sign *pak_sign;
-                if((pak_sign=buf_to_pak_sign(data))!=NULL){
-                    XLcore * core=core_get_by_net(&pak_sign->base.net_sender);
-                    if(core!=NULL){
-                        core_add_sign(core->id,pak_sign->sign_list,0);
-                    }
+                if(r_or_s==SIGN_REQUIRE){
+                    XLpak_base base;
+                    int p=0;
+                    data_get(data,&p,&base,sizeof(XLpak_base));
+                    XLcore * core=core_get_by_net(&base.net_sender);
+                    if(core!=NULL)network_send_sign(core->id);
                 }
-                free(pak_sign);
+                if(r_or_s==SIGN_SEND){
+                    XLpak_sign *pak_sign;
+                    if((pak_sign=buf_to_pak_sign(data))!=NULL){
+                        XLcore * core=core_get_by_net(&pak_sign->base.net_sender);
+                        if(core!=NULL){
+                            core_add_sign(core->id,pak_sign->sign_list,0);
+                        }
+                    }
+                    if(pak_sign!=NULL)free(pak_sign);
+                }
             }
             free(data);
         }
@@ -912,14 +922,14 @@ int network_ins(XLsource * sender,XLsource *receiver,INS * ins){
 }
 
 int network_send_sign(core_id_t core_id){
-
+    if(core_id==CORE_MYSELF_ID)return 2;
     XLcore * core=core_get_by_id(core_id);
     if(core==NULL)return -1;
 
     XLpak_sign pak_sign;
     pak_sign.base.net_receiver=core->net;
 
-    pak_sign.base.mode=(NETWORK_MODE_SIGN<<12);
+    pak_sign.base.mode=(NETWORK_MODE_SIGN<<12)+SIGN_SEND;
     pak_sign.sign_list=NULL;
     pak_sign.base.net_sender=core_get_by_id(CORE_MYSELF_ID)->net;
 
@@ -929,13 +939,13 @@ int network_send_sign(core_id_t core_id){
     XLpak_signinfo * sign_now=NULL,*sign_front=NULL;
     pak_sign.sign_num=0;
     while(event_now!=NULL){
-        if(event_now->event.sign!=NULL){
+        if(event_now->event.sign.use==ENABLE){
             if(pak_sign.sign_list==NULL){
                 XLpak_signinfo * new=malloc(sizeof(XLpak_signinfo));
                 pak_sign.sign_list=new;
 
-                pak_sign.sign_list->name=event_now->event.sign->name;
-                pak_sign.sign_list->type=event_now->event.sign->type;
+                pak_sign.sign_list->name=event_now->event.sign.name;
+                pak_sign.sign_list->type=event_now->event.sign.type;
                 pak_sign.sign_list->next=NULL;
                 sign_now=pak_sign.sign_list;
             }
@@ -943,8 +953,8 @@ int network_send_sign(core_id_t core_id){
                 sign_now->next=malloc(sizeof(XLpak_signinfo));
                 XLpak_signinfo * sign_new=sign_now->next;
                 sign_new->next=NULL;
-                sign_new->name=event_now->event.sign->name;
-                sign_new->type=event_now->event.sign->type;
+                sign_new->name=event_now->event.sign.name;
+                sign_new->type=event_now->event.sign.type;
                 sign_now=sign_new;
             }
             pak_sign.sign_num++;
@@ -953,10 +963,21 @@ int network_send_sign(core_id_t core_id){
     }
 
     queue_add_sign(queue_send(),&pak_sign,0);
-    //printf("sdsa:%d\n",pak_sign.sign_num);
-    //int size=0;
-    //DATA * data=pak_sign_to_buf(&pak_sign,&size);
-    //printf("ggshshs\n");
-    //buf_to_pak_sign(data);
+    return 1;
+}
+
+int network_require_sign(core_id_t core_id){
+    if(core_id==CORE_MYSELF_ID)return 2;
+    XLcore * core=core_get_by_id(core_id);
+    if(core==NULL)return -1;
+
+    XLpak_sign pak_sign;
+    pak_sign.base.net_receiver=core->net;
+
+    pak_sign.base.mode=(NETWORK_MODE_SIGN<<12)+SIGN_REQUIRE;
+    pak_sign.sign_list=NULL;
+    pak_sign.base.net_sender=core_get_by_id(CORE_MYSELF_ID)->net;
+
+    queue_add_sign(queue_send(),&pak_sign,0);
     return 1;
 }

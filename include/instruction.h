@@ -14,6 +14,7 @@ int ins_send_to_event(XLpak_ins * ins);
 mon_id_t monitor_create(XLsource_list * send_list,XLsource * receive);
 void monitor_list(void);
 int monitor_remove(mon_id_t id);
+XLmonitor * monitor_get_by_id(mon_id_t monitor_id);
 XLpak_ins * monitor_get_member(mon_id_t monitor_id);
 INS * monitor_get_ins(mon_id_t monitor_id);
 int monitor_remove_member(mon_id_t monitor_id);

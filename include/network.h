@@ -43,7 +43,7 @@
 
 #define SIGN_REQUIRE    1          //---- ---- ---- 0001
 #define SIGN_SEND       2          //---- ---- ---- 0010
-
+#define SEE_FOUR_ONLY        15       //0010 0000 0000 0000
 //QUEUE
 #define QUEUE_TYPE_NONE     0
 #define QUEUE_TYPE_INS      1
@@ -88,4 +88,5 @@ int network_core_disconnect_send(core_id_t core_id);
 //int network_ins_send(int receiver,INS * ins);
 int network_ins(XLsource * sender,XLsource *receiver,INS * ins);
 int network_send_sign(core_id_t core_id);
+int network_require_sign(core_id_t core_id);
 #endif // NETWORK_H
