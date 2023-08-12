@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include <core.h>
 #include <event.h>
 #include <network.h>
 #include <instruction.h>
+#include <core.h>
 #include <string.h>
 
 INS * FFmpeg_server(XLevent_par * par){
@@ -122,7 +122,6 @@ INS * test(XLevent_par * par){
         sleep(1);
     }
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -322,3 +321,21 @@ int main(int argc, char *argv[])
     }
     return 0;
 }
+
+/*
+int main()
+{
+    xinlink_init();
+    XLnet net;
+    //net.ip=inet_addr("192.168.1.13");
+    //net.port=8088;
+    char * s="LINUX PC\n";
+    while(1)
+    {
+        Broadcast_send((DATA *)s,strlen(s)+1);
+    //    TCP_send(&net,(DATA *)s,strlen(s)+1);
+        sleep(1);
+    }
+    return 0;
+}
+*/

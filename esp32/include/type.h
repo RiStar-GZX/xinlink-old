@@ -2,8 +2,8 @@
 #define TYPE_H
 
 //config
-#define PLATFORM_LINUX
-//#define PLATFORM_ESP32
+//#define PLATFORM_LINUX
+#define PLATFORM_ESP32
 
 #define ENABLE   1
 #define DISABLE  0
