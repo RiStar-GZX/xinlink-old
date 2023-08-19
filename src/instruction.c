@@ -138,7 +138,6 @@ int ins_send_to_event(XLpak_ins * ins){
     //指令为启动指定APP
     if(ins->receiver.mode==START_APP)
     {
-
         XLapp * app=app_get_by_name(ins->receiver.name);
         if(app==NULL)return -1;
         event_id_t event_id=event_create(app->event);
@@ -150,7 +149,6 @@ int ins_send_to_event(XLpak_ins * ins){
         AC=1;
     }
     //模式是设备标识符
-
     if(ins->receiver.mode==SIGN_NAME&&ins->receiver.name!=NULL){
         extern XLevent_list * event_list_head;
         XLevent_list * event_now=event_list_head;
@@ -164,6 +162,7 @@ int ins_send_to_event(XLpak_ins * ins){
             }
             event_now=event_now->next;
         }
+        return 1;
     }
     //添加指令到各个监视器中
     extern XLmonitor_list * monitor_head;
@@ -176,21 +175,24 @@ int ins_send_to_event(XLpak_ins * ins){
 
         if(AC&&monitor_now->monitor->id==SA_mon_id)num++;   //启动应用的时候
         else if(source->mode==ins->receiver.mode){
-            if((source->mode==EVENT_ID||source->mode==ACCESS)
+            if((source->mode==EVENT_ID||source->mode==ACCESS||source->mode==CORE_MYSELF||source->mode==CORE_OTHER)
                 &&source->id==ins->receiver.id)num++;
             if(source->mode==SIGN_NAME&&strcmp(source->name,ins->receiver.name)==0){
-                event_id_t event_id=sign_get_event(source->name);
+                event_id_t event_id=event_get_by_signname(source->name);
                 XLevent * event=event_get_by_id(event_id);
                 if(event==NULL)return -1;
 
                 num++;
             }
         }
+
+        //printf("send to event\n");
         if(num==1){
-            XLsource_list *list=monitor_now->monitor->list;
+            XLsource_list *list=monitor_now->monitor->list.source_list;
             if(list==NULL)queue_add_ins(&monitor_now->monitor->queue_head,ins,0);
             while(list!=NULL){
                 if(source_cmp(&list->source,&ins->sender)){
+                    printf("send to event\n");
                     queue_add_ins(&monitor_now->monitor->queue_head,ins,0);
                     break;
                 }
@@ -206,18 +208,16 @@ int ins_send_to_event(XLpak_ins * ins){
 //----------------------------------------------//
 //            指令监视器的基本操作                 //
 //----------------------------------------------//
-mon_id_t monitor_create(XLsource_list * send_list,XLsource * receive)
+mon_id_t monitor_create(XLsource * receive)
 {
     int mode=0;
     extern XLmonitor_list * monitor_head;
-    //XLsource_list * send_list=send_list;
-    //if(list==NULL)list=source_list_create();
 
     if(monitor_head==NULL){
         monitor_head=(XLmonitor_list*)malloc(sizeof(XLmonitor_list));
         monitor_head->monitor=(XLmonitor*)malloc(sizeof(XLmonitor));
         monitor_head->monitor->id=1;
-        monitor_head->monitor->list=send_list;
+        monitor_head->monitor->list.source_list=NULL;
         monitor_head->monitor->receiver=*receive;
         monitor_head->next=NULL;
         return monitor_head->monitor->id;
@@ -243,7 +243,7 @@ mon_id_t monitor_create(XLsource_list * send_list,XLsource * receive)
     XLmonitor_list * monitor_new=(XLmonitor_list*)malloc(sizeof (XLmonitor_list));
     monitor_new->monitor=(XLmonitor*)malloc(sizeof (XLmonitor));
     monitor_new->monitor->id=id;
-    monitor_new->monitor->list=send_list;
+    monitor_new->monitor->list.source_list=NULL;
     monitor_new->monitor->receiver=*receive;
     monitor_new->monitor->queue_head.queue=NULL;
 
@@ -309,7 +309,6 @@ int monitor_remove(mon_id_t id)
     return  -2;
 }
 
-
 XLmonitor * monitor_get_by_id(mon_id_t monitor_id){
     extern XLmonitor_list * monitor_head;
     XLmonitor_list * list_now=monitor_head;
@@ -330,6 +329,7 @@ XLsource *monitor_get_source(mon_id_t id){
     if(monitor!=NULL)return &monitor->receiver;
     return NULL;
 }
+
 XLpak_ins * monitor_get_member(mon_id_t monitor_id){
     XLmonitor * monitor=monitor_get_by_id(monitor_id);
     if(monitor==NULL)return NULL;
@@ -361,28 +361,19 @@ int monitor_remove_all_member(mon_id_t monitor_id){
 int monitor_limit_add_source(mon_id_t mon_id,XLsource * source){
     XLmonitor * monitor=monitor_get_by_id(mon_id);
     if(monitor==NULL)return -1;
+    return source_list_add_source(monitor->list,source);
+}
 
-    if(source==NULL){
-        monitor->list=NULL;
-        return 2;
-    }
+int monitor_limit_remove_source(mon_id_t mon_id,XLsource * source){
+    XLmonitor * monitor=monitor_get_by_id(mon_id);
+    if(monitor==NULL)return -1;
+    return source_list_remove_source(monitor->list,source);
+}
 
-    XLsource_list * list=(XLsource_list*)malloc(sizeof(XLsource_list));
-    list->next=NULL;
-    list->source=*source;
-    if(monitor->list==NULL){
-        monitor->list=list;
-        return 1;
-    }
-    XLsource_list * list_now=monitor->list;
-    while(list_now!=NULL){
-        if(list_now->next==NULL){
-            list_now->next=list;
-            return 1;
-        }
-        list_now=list_now->next;
-    }
-    return -1;
+int monitor_limit_remove_all_source(mon_id_t mon_id){
+    XLmonitor * monitor=monitor_get_by_id(mon_id);
+    if(monitor==NULL)return -1;
+    return source_list_free_all(monitor->list);
 }
 
 //----------------------------------------------//
@@ -396,7 +387,6 @@ int ins_get_par(INS * ins,char *name){
     return 0;
 }
 
-
 char * ins_get_par_str(INS * ins,char *name){
     XLins_decoded * decode=ins_decode(ins);
     for(int i=0;i<decode->argc;i++){
@@ -406,6 +396,7 @@ char * ins_get_par_str(INS * ins,char *name){
     free(decode);
     return NULL;
 }
+
 int ins_get_par_int(INS *ins,char* name,int * val){
     char * str=ins_get_par_str(ins,name);
     if(str==NULL)return -1;
@@ -420,6 +411,7 @@ int ins_get_par_ip(INS * ins,char *name,IP * ip){
     return 1;
 }
 
+/*
 //192.168.0.100:666:EID:6
 int ins_get_par_source(INS *ins,char *name,XLsource * source){
     char * par=ins_get_par_str(ins,name);
@@ -472,8 +464,6 @@ int ins_get_par_source(INS *ins,char *name,XLsource * source){
     return -2;
 }
 
-
-/*
 char * ins_source_to_str(XLsource *source){
     if(source==NULL)return NULL;
     char str[40],mode[10];
@@ -484,6 +474,64 @@ char * ins_source_to_str(XLsource *source){
 }
 */
 
+//192.168.1.16:8081:EID:11
+//192.168.1.16:8081:SIGN:test
+XLsource * ins_get_par_source(INS * ins,char * name){
+    char * par=ins_get_par_str(ins,name);
+    if(par==NULL)return NULL;
+    char * str[4],*str_p;
+    int p=0;
+    for(int i=0;i<4;i++)str[i]=malloc(sizeof(char)*strlen(par));
+    //printf("par:%s\n",par);
+    for(int i=0;i<4;i++){
+        str_p=str[i];
+        for(int j=p;j<strlen(par)+1;j++){
+            if(j>=strlen(par)+1){
+                for(int i=0;i<4;i++)free(str[i]);
+                return NULL;
+            }
+            if(par[j]==':'||par[j]=='\0'){
+                str[i][j]='\0';
+                p=j+1;
+                break;
+            }
+            *str_p=par[j];
+            str_p++;
+        }
+    }
+    for(int i=0;i<4;i++)printf("%s\n",str[i]);
+    XLsource * source=malloc(sizeof(XLsource));
+    source->net.ip=inet_addr(str[0]);
+    source->net.port=atoi(str[1]);
+    free(str[0]);
+    free(str[1]);
+    if(strcmp(str[2],"EID")==0){    //EVENT_ID
+        source->mode=EVENT_ID;
+        source->id=atoi(str[3]);
+        free(str[3]);
+    }
+    else if(strcmp(str[2],"SN")==0){     //SIGN
+        source->mode=SIGN_NAME;
+        source->name=str[3];
+    }
+    else if(strcmp(str[2],"CM")==0){     //CORE_MYSELF
+        source->mode=CORE_MYSELF;
+        source->id=atoi(str[3]);
+        free(str[3]);
+    }
+    else if(strcmp(str[2],"CO")==0){     //CORE_OTHOR
+        source->mode=CORE_OTHER;
+        source->id=atoi(str[3]);
+        free(str[3]);
+    }
+    else {
+        free(source);
+        return NULL;
+    }
+    free(str[2]);
+    return source;
+}
+
 int source_cmp(XLsource *source1,XLsource *source2){
     int i=0;
     if(source1->mode==source2->mode)i++;
@@ -493,4 +541,75 @@ int source_cmp(XLsource *source1,XLsource *source2){
     printf("i:%d\n",i);
     if(i==3)return 1;
     return 0;
+}
+
+int source_cpy(XLsource * source1,XLsource * source2){
+    if(source1==NULL||source2==NULL)return -1;
+    source1->id=source2->id;
+    source1->mode=source2->mode;
+    source1->net.ip=source2->net.ip;
+    source1->net.port=source2->net.port;
+    if(source2->mode==SIGN_NAME||source2->mode==START_APP){
+        if(source2->name==NULL)return -1;
+        source1->name=(char*)malloc(strlen(source2->name)+1);
+        strcpy(source1->name,source2->name);
+    }
+    return 1;
+}
+
+int source_list_add_source(XLsource_listhead list,XLsource * source){
+    if(source==NULL)return -1;
+    
+    if(list.source_list==NULL){
+        list.source_list=(XLsource_list*)malloc(sizeof(XLsource_list));
+        source_cpy(&list.source_list->source,source);
+        list.source_list->next=NULL;
+        return 1;
+    }
+
+    XLsource_list * list_now=list.source_list;
+    while(list_now->next!=NULL){
+        list_now=list_now->next;
+    }
+    XLsource_list * list_new;
+    list_new->next=NULL;
+    source_cpy(&list_new->source,source);
+    list_now->next=list_new;
+    return 1;
+
+}
+
+int source_list_remove_source(XLsource_listhead list,XLsource * source){
+    if(source==NULL)return -1;
+    if(list.source_list==NULL)return 2;
+
+    XLsource_list * list_now=list.source_list,*list_front=NULL;
+    while(list_now->next!=NULL){
+        if(source_cmp(&list_now->source,source)){
+            if(list_front==NULL){
+                list.source_list=NULL;
+            }
+            else {
+                list_front->next=list.source_list->next;
+            }
+            free(list_now);
+            return 1;
+        }
+        list_front=list_now;
+        list_now=list_now->next;
+    }
+    return 2;
+}
+
+int source_list_free_all(XLsource_listhead list){
+    if(list.source_list==NULL)return 1;
+
+    XLsource_list * list_now=list.source_list;
+    list.source_list=NULL;
+    while(list_now!=NULL){
+        XLsource_list * list_next=list_now->next;
+        free(list_now);
+        list_now=list_next;
+    }
+    return 1;    
 }

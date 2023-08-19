@@ -162,7 +162,7 @@ event_id_t event_create(EVENT EVENT){
         event_list_head->event.id=1;
         event_list_head->event.sign.use=DISABLE;
         source.id=1;
-        event_list_head->event.mon_id=monitor_create(NULL,&source);
+        event_list_head->event.mon_id=monitor_create(&source);
 
         return 1;
     }
@@ -191,7 +191,7 @@ event_id_t event_create(EVENT EVENT){
     event_new->event.event=EVENT;
     event_new->event.sign.use=DISABLE;
     source.id=id;
-    event_new->event.mon_id=monitor_create(NULL,&source);
+    event_new->event.mon_id=monitor_create(&source);
 
     if(mode==1)
     {
@@ -297,18 +297,19 @@ void event_show(void){
     printf("\n");
 }
 
-int event_start(char * app_name){
+event_id_t event_create_and_run(char * app_name){
     XLapp * app=app_get_by_name(app_name);
     if(app==NULL)return -1;
     event_id_t event_id=event_create(app->event);
     if(event_id<=0)return -1;
     //运行事件(会在另一个线程中运行事件）
     event_run(event_id);
-    return 1;
+    return event_id;
 }
 
 int event_add_sign(event_id_t event_id,char * sign_name,char * type){
     if(sign_name==NULL&&type==NULL)return -1;
+    //if(event_get_by_signname(sign_name)>0)return -2;
     XLevent * event=event_get_by_id(event_id);
     if(event==NULL)return -1;
     event->sign.use=ENABLE;
@@ -332,7 +333,7 @@ int event_remove_sign(event_id_t event_id){
 }
 
 
-event_id_t sign_get_event(char * sign_name){
+event_id_t event_get_by_signname(char * sign_name){
     if(sign_name==NULL)return -1;
     extern XLevent_list * event_list_head;
     XLevent_list * event_now=event_list_head;
@@ -352,3 +353,4 @@ XLsign *event_get_sign(event_id_t event_id){
     if(event==NULL)return NULL;
     return &event->sign;
 }
+

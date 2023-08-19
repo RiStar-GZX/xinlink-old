@@ -16,8 +16,8 @@ uint16_t pak_id=0;
 //----------------------------------------------//
 
 //将数据包中的数据（*data）用16进制打印到屏幕上
-void data_show(DATA *data,uint size){
-    DATA *data_p=data;
+void data_show(uint8_t *data,uint size){
+    uint8_t *data_p=data;
     for(int i=0;i<size;i++){
         if(*data_p=='\0')printf("!");
         else printf("%X",*data_p);
@@ -27,14 +27,14 @@ void data_show(DATA *data,uint size){
 }
 
 //从一个结构体（*_struct）中复制（size）个大小的数据到另一个地址（* data），并将指针（*p）大小加上size
-void data_add(DATA *data,int * p,void * _struct,uint size){
+void data_add(uint8_t *data,int * p,void * _struct,uint size){
     if(data==NULL||_struct==NULL)return;
-    DATA * struct_p=(DATA*)_struct;
-    DATA * data_p=data;
+    uint8_t * struct_p=(uint8_t*)_struct;
+    uint8_t * data_p=data;
     if(p!=NULL)data_p+=*p;
     int i;
     for(i=0;i<size;i++){
-        *data_p=*(DATA*)struct_p;
+        *data_p=*(uint8_t*)struct_p;
         data_p++;
         struct_p++;
     }
@@ -42,14 +42,14 @@ void data_add(DATA *data,int * p,void * _struct,uint size){
 }
 
 //将字符串（*str）复制到另一个地址（* data），并将指针（*p）大小加上字符串的大小
-void data_add_str(DATA *data,int * p,char * str){
+void data_add_str(uint8_t *data,int * p,char * str){
     data_add(data,p,str,strlen(str)+1);
 }
 
 //从一个地址数据（*data）中复制（size）个位到（* _struct），并将指针（*p）大小加上size
-void data_get(DATA *data,int * p,void * _struct,uint size){
+void data_get(uint8_t *data,int * p,void * _struct,uint size){
     if(data==NULL||_struct==NULL)return;
-    DATA * data_p=data,*struct_p=(DATA*)_struct;
+    uint8_t * data_p=data,*struct_p=(uint8_t*)_struct;
     if(p!=NULL)data_p+=*p;
     int i;
     for(i=0;i<size;i++){
@@ -61,7 +61,7 @@ void data_get(DATA *data,int * p,void * _struct,uint size){
 }
 
 //从一个地址数据（*data）中自动发现字符串并复制到（* str），并将指针（*p）大小加上size
-char * data_get_str(DATA *data,int *p){
+char * data_get_str(uint8_t *data,int *p){
     int len=strlen((char*)data+*p)+1;
     if(len>128)return NULL;
     char *s=(char*)malloc(sizeof(char)*len);
@@ -74,13 +74,26 @@ char * data_get_str(DATA *data,int *p){
 //----------------------------------------------//
 
 //获得本机的网络信息，返回以XLnet网络结构体
+#ifdef PLATFORM_LINUX
 XLnet network_get_local_info(void)
 {
     XLnet net_info;
     net_info.ip=inet_addr("192.168.1.15");
-    net_info.port=8081;
+    net_info.port=NETWORK_PORT;
     return net_info;
 }
+#endif
+
+#ifdef PLATFORM_ESP32
+XLnet network_get_local_info(void)
+{
+    XLnet net_info;
+    net_info.ip=inet_addr(WiFi.localIP().toString().c_str());
+    net_info.port=NETWORK_PORT;
+    return net_info;
+}
+#endif
+
 
 //----------------------------------------------//
 //                  网络包发送                   //
@@ -88,7 +101,7 @@ XLnet network_get_local_info(void)
 
 //发送TCP数据包（现在是UDP没改），接收者为XLnet网络结构体对应的网络，发送的内容是(*data),大小为（datasize）
 #ifdef PLATFORM_LINUX
-int TCP_send(XLnet * net,DATA * data,int datasize)
+int TCP_send(XLnet * net,uint8_t * data,int datasize)
 {
     //ERROR
     if(net==NULL)return 0;
@@ -108,9 +121,6 @@ int TCP_send(XLnet * net,DATA * data,int datasize)
 
     serveraddr.sin_family = AF_INET; //协议族，AF_INET：ipv4网络协议
 
-    //serveraddr.sin_addr.s_addr =inet_addr("192.168.1.41");//ip地址
-    //serveraddr.sin_port = htons(8081);
-
     serveraddr.sin_addr.s_addr = net->ip;//ip地址
     serveraddr.sin_port = htons(net->port);
 
@@ -125,12 +135,12 @@ int TCP_send(XLnet * net,DATA * data,int datasize)
 }
 #endif
 #ifdef PLATFORM_ESP32
-int TCP_send(XLnet *net, DATA *data, int datasize)
+int TCP_send(XLnet *net, uint8_t *data, int datasize)
 {
     if (net == NULL || data == NULL || datasize <= 0)
         return 0;
     WiFiUDP Udp;
-    Udp.begin(8081);
+    Udp.begin(NETWORK_PORT);
     in_addr in;
     IPAddress ip;
     in.s_addr = net->ip;
@@ -185,7 +195,7 @@ int Broadcast_send(void *buf, int bufsize)
      if (buf == NULL || bufsize <= 0)
          return 0;
      WiFiUDP Udp;
-     Udp.begin(8081);
+     Udp.begin(NETWORK_PORT);
      Udp.beginPacket("255.255.255.255", NETWORK_BROADCAST_PORT);
      Udp.write((uint8_t *)buf, bufsize);
      Udp.endPacket();
@@ -204,16 +214,17 @@ void ins_send_thread(void * arg){
 void * ins_send_thread(void * arg){
 #endif
      while (1) {
+             int delay=DISABLE;
         while (1) {
             extern XLqueue_head send_queue_head;
-            if(send_queue_head.queue==NULL)break;
+            if(send_queue_head.queue==NULL){delay=ENABLE;break;}
             XLqueue * queue_now=send_queue_head.queue;
             //发送的包为指令
             if(queue_now->mode==QUEUE_TYPE_INS){
                 XLcore *core=core_get_by_net(&queue_now->in.pak_ins.base.net_receiver);
                 if(core==NULL)break;
                 int size=0;
-                DATA * data=pak_ins_to_buf(&queue_now->in.pak_ins,&size);
+                uint8_t * data=pak_ins_to_buf(&queue_now->in.pak_ins,&size);
                 if(size==0||data==NULL)break;
                 TCP_send(&core->net,data,size);
                 break;
@@ -221,14 +232,14 @@ void * ins_send_thread(void * arg){
             //发送的包为对接同意
             else if(queue_now->mode==QUEUE_TYPE_CONNECT){
                 int size;
-                DATA * data=pak_connect_to_buf(&queue_now->in.pak_connect,&size);
+                uint8_t * data=pak_connect_to_buf(&queue_now->in.pak_connect,&size);
                 TCP_send(&queue_now->in.pak_connect.base.net_receiver,data,size);
                 free(data);
                 break;
             }
             else if(queue_now->mode==QUEUE_TYPE_SIGN){
                 int size;
-                DATA * data=pak_sign_to_buf(&queue_now->in.pak_sign,&size);
+                uint8_t * data=pak_sign_to_buf(&queue_now->in.pak_sign,&size);
                 TCP_send(&queue_now->in.pak_sign.base.net_receiver,data,size);
                 printf("SEND!\n");
                 free(data);
@@ -239,7 +250,8 @@ void * ins_send_thread(void * arg){
             }
         }
         queue_del_head(queue_send());
-        usleep(100);//没有这个延时程序会崩
+
+        if(delay)usleep(10000);//没有这个延时程序会崩
     }
 }
 
@@ -376,7 +388,7 @@ void * ins_recv_thread(void * arg)
 void ins_recv_thread(void *arg)
 {
     WiFiUDP Udp;
-    Udp.begin(8081);
+    Udp.begin(NETWORK_PORT);
     uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * PAK_MAX_SIZE);
     while (1)
     {
@@ -392,6 +404,7 @@ void ins_recv_thread(void *arg)
             net.ip = inet_addr(Udp.remoteIP().toString().c_str());
             decode_ins_receive_packet(&net,data);
         }
+        usleep(1000000);
     }
     free(data);
 }
@@ -412,7 +425,7 @@ void * broadcast_send_thread(void * arg){
             //发送的包为对接
             if(queue_now->mode==NETWORK_MODE_CONNECT) {
                 int size;
-                DATA * data=pak_connect_to_buf(&queue_now->in.pak_connect,&size);
+                uint8_t * data=pak_connect_to_buf(&queue_now->in.pak_connect,&size);
                 //printf("BC send!\n");
                 Broadcast_send(data,size);
                 free(data);
@@ -423,7 +436,7 @@ void * broadcast_send_thread(void * arg){
             }
         }
         queue_del_head(queue_broadcast());
-        usleep(10000);
+        usleep(1000000);
     }
 }
 
@@ -502,8 +515,9 @@ void broadcast_receive_thread(void *arg)
             net.port = Udp.remotePort();
             net.ip = inet_addr(Udp.remoteIP().toString().c_str());
             // if(*(uint8_t*)(&net.ip+3)==255)
-            // decode_broadcast_packet(data);
+            decode_broadcast_receive_packet(data);
         }
+        usleep(100000);
     }
 }
 #endif
@@ -525,7 +539,7 @@ void *total_thread(void * arg)
             }
         }
         queue_del_head(queue_total());
-        usleep(100);
+        usleep(10000);
     }
 }
 
@@ -752,7 +766,7 @@ int queue_init(void){
 //----------------------------------------------//
 
 //将buf转换为网络数据结构体（XLpak_ins）
-XLpak_ins * buf_to_pak_ins(DATA * buf){
+XLpak_ins * buf_to_pak_ins(uint8_t * buf){
     if(buf==NULL)return NULL;
     XLpak_ins * pak_ins=(XLpak_ins*)malloc(sizeof(XLpak_ins));
     int p=0;
@@ -760,14 +774,13 @@ XLpak_ins * buf_to_pak_ins(DATA * buf){
     data_get(buf,&p,pak_ins,sizeof(XLpak_base));
 
     //sender source
-    data_get(buf,&p,&pak_ins->sender,sizeof(XLsource)-sizeof(char*));
+    data_get(buf,&p,&pak_ins->sender,SIZE_SOURCE_WITHOUT_NAME);
     if(pak_ins->base.mode==SIGN_NAME&&(pak_ins->sender.name=data_get_str(buf,&p))==NULL){
         free(pak_ins);
         return NULL;
     }
-
     //receiver source
-    data_get(buf,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(char*));
+    data_get(buf,&p,&pak_ins->receiver,SIZE_SOURCE_WITHOUT_NAME);
     if((pak_ins->receiver.mode==START_APP||pak_ins->receiver.mode==SIGN_NAME)&&
             (pak_ins->receiver.name=data_get_str(buf,&p))==NULL){
         free(pak_ins);
@@ -780,11 +793,11 @@ XLpak_ins * buf_to_pak_ins(DATA * buf){
 }
 
 //将网络数据结构体（XLpak_ins）转换为buf
-DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
+uint8_t * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
     if(pak_ins==NULL||size==NULL)return NULL;
     int pak_size;
     //measure packet size
-    pak_size=sizeof(XLpak_ins)-sizeof(char*)*3;
+    pak_size=sizeof(XLpak_ins)-sizeof(char*)*3;//SIZE_PAKINS_WITHOUT_INS; //数据包头部的大小
     if(pak_ins->sender.mode==SIGN_NAME)
     {
         if(pak_ins->sender.name!=NULL)pak_size+=strlen(pak_ins->sender.name)+1;
@@ -797,15 +810,16 @@ DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
     }
     if(pak_ins->ins!=NULL)
         pak_size+=strlen(pak_ins->ins)+1;
-    DATA *data=(DATA*)malloc(pak_size);
+    printf("size:%d\n",pak_size);
+    uint8_t *data=(uint8_t*)malloc(pak_size);
 
     //Write into packet
     int p=0;
     data_add(data,&p,&pak_ins->base,sizeof(XLpak_base));
-    data_add(data,&p,&pak_ins->sender,sizeof(XLsource)-sizeof(char*));
+    data_add(data,&p,&pak_ins->sender,SIZE_SOURCE_WITHOUT_NAME);
     if(pak_ins->sender.mode==SIGN_NAME)
         data_add_str(data,&p,pak_ins->sender.name);
-    data_add(data,&p,&pak_ins->receiver,sizeof(XLsource)-sizeof(char*));
+    data_add(data,&p,&pak_ins->receiver,SIZE_SOURCE_WITHOUT_NAME);
     if(pak_ins->receiver.mode==SIGN_NAME||pak_ins->receiver.mode==START_APP)
         data_add_str(data,&p,pak_ins->receiver.name);
     if(pak_ins->ins!=NULL)
@@ -815,7 +829,7 @@ DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size){
 }
 
 //将buf转换为网络数据结构体（XLpak_connect）
-XLpak_connect * buf_to_pak_connect(DATA* buf){
+XLpak_connect * buf_to_pak_connect(uint8_t* buf){
     if(buf==NULL)return NULL;
     int p=0;
     XLpak_connect * pak_connect=(XLpak_connect*)malloc(sizeof(XLpak_connect));
@@ -829,19 +843,19 @@ XLpak_connect * buf_to_pak_connect(DATA* buf){
 }
 
 //将网络数据结构体（XLpak_connect）转换为buf
-DATA * pak_connect_to_buf(XLpak_connect * pak_connect,int * size){
+uint8_t * pak_connect_to_buf(XLpak_connect * pak_connect,int * size){
     if(pak_connect==NULL||size==NULL||pak_connect->core_name==NULL)return NULL;
     int p=0,pak_size;
     pak_size=sizeof(XLpak_base);
     pak_size+=strlen(pak_connect->core_name)+1;
-    DATA * data=(DATA*)malloc(pak_size);
+    uint8_t * data=(uint8_t*)malloc(pak_size);
     data_add(data,&p,pak_connect,sizeof(XLpak_base));
     data_add_str(data,&p,pak_connect->core_name);
     *size=pak_size;
     return data;
 }
 
-DATA * pak_sign_to_buf(XLpak_sign * pak_sign,int * size){
+uint8_t * pak_sign_to_buf(XLpak_sign * pak_sign,int * size){
     if(pak_sign==NULL||size==NULL)return 0;
     int p=0,pak_size;
     pak_size=sizeof(XLpak_base);
@@ -854,7 +868,7 @@ DATA * pak_sign_to_buf(XLpak_sign * pak_sign,int * size){
         sign_now=sign_now->next;
     }
     printf("size:%d\n",pak_size);
-    DATA * data=(DATA*)malloc(pak_size);
+    uint8_t * data=(uint8_t*)malloc(pak_size);
     data_add(data,&p,pak_sign,sizeof(XLpak_base)+sizeof(uint8_t));
     sign_now=pak_sign->sign_list;
 
@@ -868,7 +882,7 @@ DATA * pak_sign_to_buf(XLpak_sign * pak_sign,int * size){
     return data;
 }
 
-XLpak_sign * buf_to_pak_sign(DATA * buf){
+XLpak_sign * buf_to_pak_sign(uint8_t * buf){
     if(buf==NULL)return NULL;
     int p=0;
     XLpak_sign * pak_sign=(XLpak_sign*)malloc(sizeof(XLpak_sign));
@@ -901,7 +915,7 @@ XLpak_sign * buf_to_pak_sign(DATA * buf){
 //----------------------------------------------//
 
 //网络检查，看看传入数据包标记的ip是否和传入的主机ip一致
-int network_check(DATA * data,XLnet * net){
+int network_check(uint8_t * data,XLnet * net){
     if(data==NULL||net==NULL)return -2;
     XLpak_base base;
     data_get(data,NULL,&base,sizeof(XLpak_base));
@@ -1084,6 +1098,16 @@ int network_send_sign(core_id_t core_id){
     }
 
     queue_add_sign(queue_send(),&pak_sign,0);
+    return 1;
+}
+
+int network_send_ins_to_sourcelist(XLsource * sender,XLsource_listhead list,INS * ins){
+    if(sender==NULL||list.source_list==NULL||ins==NULL)return -1;
+    XLsource_list * list_now=list.source_list;
+    while(list_now!=NULL){
+        network_ins(sender,&list_now->source,ins);
+        list_now=list_now->next;
+    }
     return 1;
 }
 

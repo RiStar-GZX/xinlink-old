@@ -5,6 +5,9 @@
 #define PLATFORM_LINUX
 //#define PLATFORM_ESP32
 
+#define NETWORK_PORT           8081
+#define NETWORK_BROADCAST_PORT 8088
+
 #define ENABLE   1
 #define DISABLE  0
 
@@ -58,9 +61,9 @@ typedef int      dev_id_t;
 #ifndef INS
 typedef char INS;
 #endif
-#ifndef DATA
-typedef uint8_t DATA;
-#endif
+//#ifndef DATA
+//typedef uint8_t uint8_t;
+//#endif
 #ifndef IP
 typedef uint32_t IP;
 #endif
@@ -115,17 +118,22 @@ typedef struct XLnet {
 }XLnet;
 
 typedef struct XLsource{
-    int mode;
-    int id;
+    uint32_t mode;
+    uint32_t id;
     XLnet net;
     char * name;
 }XLsource;
+
+#define SIZE_SOURCE_WITHOUT_NAME sizeof(uint32_t)*2+sizeof(XLnet)
 
 typedef struct XLsource_list{
     XLsource source;
     struct XLsource_list * next;
 }XLsource_list;
 
+typedef struct XLsource_listhead{
+    XLsource_list * source_list;
+}XLsource_listhead;
 
 //----------NETWORK_PACKET----------//
 
@@ -143,6 +151,7 @@ typedef struct XLpak_ins{
     INS * ins;
 }XLpak_ins;
 
+#define SIZE_PAKINS_WITHOUT_INS sizeof(XLnet)+(SIZE_SOURCE_WITHOUT_NAME*2)
 
 typedef struct XLpak_connect{
     XLpak_base base;
@@ -263,7 +272,7 @@ typedef struct XLevent_thread_arg{
 typedef struct XLmonitor{
     mon_id_t id;
     //XLsource sender;
-    XLsource_list * list;
+    XLsource_listhead list;
     XLsource receiver;
     XLqueue_head queue_head;
 }XLmonitor;

@@ -17,6 +17,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <sys/socket.h>
+#include <RTOS.h>
 #endif
 
 #define SEND_QUEUE          1
@@ -41,27 +42,28 @@
 
 #define SEE_CONNECT_ONLY        15       //0010 0000 0000 0000
 
-//SOURCE
-#define EVENT_ID    1              //0001 0000 0001 ----
-#define SIGN_NAME   2              //0001 0000 0010 ----
-#define ACCESS      3              //0001 0000 0011 ----
-#define START_APP   4              //0001 0000 0100 ----
+//SOURCE MODE
+#define EVENT_ID            1              //0001 0000 0001 ----
+#define SIGN_NAME           2              //0001 0000 0010 ----
+#define ACCESS              3              //0001 0000 0011 ----
+#define START_APP           4              //0001 0000 0100 ----
+#define CORE_MYSELF         6              //0001 0000 0110 ----
+#define CORE_OTHER          7              //0001 0000 0111 ----
 
 //SIGN
 
-#define SIGN_REQUIRE    1          //---- ---- ---- 0001
-#define SIGN_SEND       2          //---- ---- ---- 0010
-#define SEE_FOUR_ONLY        15       //0010 0000 0000 0000
+#define SIGN_REQUIRE        1          //---- ---- ---- 0001
+#define SIGN_SEND           2          //---- ---- ---- 0010
+#define SEE_FOUR_ONLY       15         //0010 0000 0000 0000
 //QUEUE
 #define QUEUE_TYPE_NONE     0
 #define QUEUE_TYPE_INS      1
 #define QUEUE_TYPE_CONNECT  2
 #define QUEUE_TYPE_SIGN     3
 
-#define NETWORK_BROADCAST_PORT 8088
 
 XLnet network_get_local_info(void);
-int TCP_send(XLnet * net,DATA * data,int datasize);
+int TCP_send(XLnet * net,uint8_t * data,int datasize);
 int Broadcast_send (void *buf,int bufsize);
 
 int queue_del_head(XLqueue_head *head);
@@ -79,12 +81,12 @@ int queue_init(void);
 
 int network_thread_init(void);
 
-XLpak_ins * buf_to_pak_ins(DATA * buf);
-DATA * pak_ins_to_buf(XLpak_ins *pak_ins,int * size);
-XLpak_connect * buf_to_pak_connect(DATA* buf);
-DATA * pak_connect_to_buf(XLpak_connect * pak_connect,int * size);
-DATA * pak_sign_to_buf(XLpak_sign * pak_sign,int * size);
-XLpak_sign * buf_to_pak_sign(DATA * buf);
+XLpak_ins * buf_to_pak_ins(uint8_t * buf);
+uint8_t * pak_ins_to_buf(XLpak_ins *pak_ins,int * size);
+XLpak_connect * buf_to_pak_connect(uint8_t* buf);
+uint8_t * pak_connect_to_buf(XLpak_connect * pak_connect,int * size);
+uint8_t * pak_sign_to_buf(XLpak_sign * pak_sign,int * size);
+XLpak_sign * buf_to_pak_sign(uint8_t * buf);
 
 int network_core_find_send(void);
 int network_core_connect(XLpak_connect * pak_connect);
@@ -97,6 +99,7 @@ int network_safe(XLnet *net);
 int network_ins(XLsource * sender,XLsource *receiver,INS * ins);
 int network_send_sign(core_id_t core_id);
 int network_require_sign(core_id_t core_id);
+int network_send_ins_to_sourcelist(XLsource * sender,XLsource_listhead list,INS * ins);
 
 int network_core_find_receive(XLpak_connect * pak_connect);
 int network_core_connect_require_receive(XLpak_connect * pak_connect);

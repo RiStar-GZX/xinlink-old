@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <event.h>
 #include <network.h>
+
 #include <instruction.h>
 #include <core.h>
 #include <string.h>
-
+/*
 INS * FFmpeg_server(XLevent_par * par){
     printf("ffmpeg start!");
     monitor_remove_all_member(par->mon_id);
@@ -36,7 +37,7 @@ INS * mouse_server(XLevent_par * par){
         pak_ins=monitor_get_member(par->id);
         if(pak_ins!=NULL&&ins_get_par(pak_ins->ins,"connect")==1){
             printf("start new connection\n");
-            if(mon_ac==0)mon_ac=monitor_create(NULL,monitor_get_source(par->mon_id));
+            if(mon_ac==0)mon_ac=monitor_create(monitor_get_source(par->mon_id));
             monitor_limit_add_source(mon_ac,&pak_ins->sender);
         }
         monitor_remove_member(par->mon_id);
@@ -45,7 +46,8 @@ INS * mouse_server(XLevent_par * par){
         usleep(1000);
     }
 }
-
+*/
+/*
 INS * mouse_client(XLevent_par * par){
     XLpak_ins * pak_ins;
     pak_ins=monitor_get_member(par->mon_id);
@@ -64,7 +66,6 @@ INS * mouse_client(XLevent_par * par){
     network_ins(monitor_get_source(par->mon_id),&source,"connect");
     int X=100,Y=100;
     while(1){
-        /*
         system("xdotool getmouselocation > a.txt");
         FILE * file;
         file=fopen("./a.txt","rb+");
@@ -74,7 +75,7 @@ INS * mouse_client(XLevent_par * par){
         fseek(file,2,SEEK_CUR);
         while((t=getc(file))!=32)y=y*10+(t-48);
         //char s[50]="x 100 y 100";
-        */
+
         char s[50];
        if(X==1000){
             X=100;
@@ -84,16 +85,71 @@ INS * mouse_client(XLevent_par * par){
         X+=4;
 
         //fclose(file);
-        /*if(x==X&&y==Y){
+        if(x==X&&y==Y){
             usleep(1000);
             continue;
-        }*/
+        }
         //printf("%s\n",s);
         sprintf(s,"x %d y %d",X,Y);
         //X=x;
         //Y=y;
         network_ins(monitor_get_source(par->mon_id),&source,s);
         usleep(10000);
+    }
+}
+*/
+
+INS * vnchost(XLevent_par * par){
+    printf("vnchost start!\n");
+    //execl("/bin/sh","sh","-c","x0vncserver -display :0 -passwordfile ~/.vnc/passwd",(char*)0);
+    //system("x0vncserver -display :0 -passwordfile ~/.vnc/passwd");
+    popen("x0vncserver -display :0 -passwordfile ~/.vnc/passwd","r");
+    monitor_remove_member(par->mon_id);
+    while(1){
+        XLpak_ins * pak_ins=monitor_get_member(par->mon_id);
+        if(pak_ins==NULL){
+            usleep(10000);
+            continue;
+        }
+        //if(pak_ins->sender.mode==CORE_MYSELF&&ins_get_par(pak_ins->ins,"exit")){
+        //    return NULL;
+        //}
+        if(ins_get_par(pak_ins->ins,"connectwith")){
+            //printf(" connectwith source 192.168.1.15:8081:SN:vncclient");
+            printf("get ins\n");
+            //system("neofetch");
+            XLsource * receiver=ins_get_par_source(pak_ins->ins,"source");
+
+            if(receiver!=NULL){
+                network_ins(monitor_get_source(par->mon_id),receiver,"connect -f -h");
+                printf("OKOKOK!\n");
+            }
+        }
+        monitor_remove_member(par->mon_id);
+    }
+    return NULL;
+}
+
+INS * vncclient(XLevent_par * par){
+    while(1)
+    {
+        XLpak_ins * pak_ins=monitor_get_member(par->mon_id);
+        if(pak_ins==NULL){
+            usleep(10000);
+            continue;
+        }
+        printf("have\n");
+        if(ins_get_par(pak_ins->ins,"connect")){
+            char str[100];
+            struct in_addr ip;
+            ip.s_addr=pak_ins->sender.net.ip;
+            sprintf(str,"remmina -c vnc://%s:5900",inet_ntoa(ip));
+            if(ins_get_par(pak_ins->ins,"-f")>0)strcat(str," --enable-fullscreen");
+            if(ins_get_par(pak_ins->ins,"-h")>0)strcat(str," --enable-extra-hardening");
+            printf("str:%s\n",str);
+            system(str);
+        }
+        monitor_remove_member(par->mon_id);
     }
 }
 
@@ -123,25 +179,80 @@ INS * test(XLevent_par * par){
     }
 }
 
+INS * keyborad_host(XLevent_par * par){
+    printf("keyborad host start\n");
+    mon_id_t mo=0;
+    while(1){
+        XLpak_ins * pak_ins=NULL;
+
+        pak_ins=monitor_get_member(mo);
+        char stmp[50];
+        if(pak_ins!=NULL){
+            int key=0;
+            //char c[16]="123A456B789C*0#D";
+            char c[16]="qwerasdftm9C1234";
+            char * str=NULL;
+            str=ins_get_par_str(pak_ins->ins,"key");
+            if(str!=NULL){
+                char s[50];
+                printf("s;%s\n",str);
+                for(int i=0;i<16;i++){
+                    if(str[i]=='1'&&stmp[i]!=str[i]){
+                        printf("i:%d %c \n",i,str[i]);
+                        sprintf(s,"xdotool keydown %c",c[i]);
+                        system(s);
+                    }
+
+                    if(str[i]=='0'&&stmp[i]!=str[i]){
+                        sprintf(s,"xdotool keyup %c",c[i]);
+                        system(s);
+                    }
+                }
+                strcpy(stmp,str);
+            }
+        }
+        pak_ins=monitor_get_member(par->mon_id);
+        if(pak_ins!=NULL)
+        {
+            if(ins_get_par(pak_ins->ins,"connect")){
+                printf("connectwith\n\n\n");
+                XLsource * source;
+                source=ins_get_par_source(pak_ins->ins,"source");
+                if(source!=NULL){
+                    network_ins(monitor_get_source(par->id),source,"connect");
+                    mo=monitor_create(monitor_get_source(par->id));
+                    monitor_limit_add_source(mo,source);
+                    //printf("IP:%x port:%d mode:%d id:%d",source->net.ip,source->net.port,source->mode,source->id);
+                    //printf("name:%s",source->name);
+                    printf("OKOKOK\n");
+                }
+            }
+            if(ins_get_par(pak_ins->ins,"disconnect")){
+                XLsource * source;
+                source=ins_get_par_source(pak_ins->ins,"source");
+                //if(source_cmp(source,mo))
+                //network_ins()
+            }
+        }
+        if(mo>0)monitor_remove_member(mo);
+        monitor_remove_member(par->mon_id);
+        usleep(10000);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     xinlink_init();
-    //app_add("mouse",mouse_server);
-    //app_add("mousec",mouse_client);
-    //app_add("test",test);
-    //event_start("mouse");
-    app_add("test",test);
-    event_start("test");
-    event_start("test");
-    event_start("test");
-    event_start("test");
-    event_start("test");
+    app_add("vnchost",vnchost);
 
-    event_add_sign(1,"test1","SB");
-    event_add_sign(2,"test2","SB");
-    event_add_sign(3,"test3","SB");
-    event_add_sign(4,"test4","SB");
-    event_add_sign(5,"test5","SB");
+    app_add("vncclient",vncclient);
+    //app_add("keyhost",keyborad_host);
+    //event_create_and_run("keyhost");
+    event_id_t host_id=event_create_and_run("vnchost");
+    event_id_t client_id=event_create_and_run("vncclient");
+    event_add_sign(host_id,"vnchost","vnc");
+    event_add_sign(client_id,"vncclient","vnc");
+
     XLpak_sign pak_sign;
     printf("Xinlink - version(0.0.1)\n");
     while(1)
@@ -199,7 +310,7 @@ int main(int argc, char *argv[])
         }
         else if(strcmp(a,"insse")==0){
             int id,eid;
-            char ins[100];
+            char ins[200];
             printf("core id:");
             scanf("%d",&id);
             printf("event id:");
@@ -323,19 +434,22 @@ int main(int argc, char *argv[])
 }
 
 /*
-int main()
-{
-    xinlink_init();
-    XLnet net;
-    //net.ip=inet_addr("192.168.1.13");
-    //net.port=8088;
-    char * s="LINUX PC\n";
-    while(1)
-    {
-        Broadcast_send((DATA *)s,strlen(s)+1);
-    //    TCP_send(&net,(DATA *)s,strlen(s)+1);
+int main(int argc ,char **argv){
+
+    char ret[1024] = {0};
+    FILE *fp;
+
+    //FILE *popen(const char *command, const char *type);
+    //fp = popen("x0vncserver","r");
+    fp = popen("ls -a","r");
+
+    //int nread = fread(ret,1,1024,fp);
+    //printf("read ret %d byte, %s\n",nread,ret);
+    while(1){
+        printf("S\n");
         sleep(1);
+        //system("neofetch");
+
     }
     return 0;
-}
-*/
+}*/
