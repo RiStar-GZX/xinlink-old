@@ -251,7 +251,7 @@ typedef struct XLapp_list{
 }XLapp_list;
 
 
-
+/*
 typedef struct XLevent_list{
     //event_id_t id;
     //EVENT event;
@@ -260,6 +260,7 @@ typedef struct XLevent_list{
     XLevent event;
     struct XLevent_list * next;
 }XLevent_list;
+*/
 
 typedef struct XLevent_thread_arg{
     XLqueue_head head;

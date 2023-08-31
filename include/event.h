@@ -11,6 +11,7 @@
 
 #include <type.h>
 #include <instruction.h>
+#include <ll.h>
 
 int app_add(char * name,EVENT event);
 void app_list(void);

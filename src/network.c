@@ -78,7 +78,7 @@ char * data_get_str(uint8_t *data,int *p){
 XLnet network_get_local_info(void)
 {
     XLnet net_info;
-    net_info.ip=inet_addr("192.168.1.15");
+    net_info.ip=inet_addr("192.168.1.12");
     net_info.port=NETWORK_PORT;
     return net_info;
 }
@@ -1069,18 +1069,20 @@ int network_send_sign(core_id_t core_id){
     pak_sign.base.net_sender=core_get_by_id(CORE_MYSELF_ID)->net;
 
     int num=0;
-    extern XLevent_list * event_list_head;
-    XLevent_list * event_now=event_list_head;
-    XLpak_signinfo * sign_now=NULL,*sign_front=NULL;
+    extern XLll * event_ll;
+    if(event_ll==NULL)return -1;
+    XLll_member * member_now=event_ll->head;
+    XLpak_signinfo * sign_now=NULL;
     pak_sign.sign_num=0;
-    while(event_now!=NULL){
-        if(event_now->event.sign.use==ENABLE){
+    for(int i=0;i<=event_ll->member_num;i++){
+        XLevent *event_now=(XLevent*)member_now->data;
+        if(event_now->sign.use==ENABLE){
             if(pak_sign.sign_list==NULL){
                 XLpak_signinfo * new_info=(XLpak_signinfo*)malloc(sizeof(XLpak_signinfo));
                 pak_sign.sign_list=new_info;
 
-                pak_sign.sign_list->name=event_now->event.sign.name;
-                pak_sign.sign_list->type=event_now->event.sign.type;
+                pak_sign.sign_list->name=event_now->sign.name;
+                pak_sign.sign_list->type=event_now->sign.type;
                 pak_sign.sign_list->next=NULL;
                 sign_now=pak_sign.sign_list;
             }
@@ -1088,13 +1090,13 @@ int network_send_sign(core_id_t core_id){
                 sign_now->next=(XLpak_signinfo*)malloc(sizeof(XLpak_signinfo));
                 XLpak_signinfo * sign_new=sign_now->next;
                 sign_new->next=NULL;
-                sign_new->name=event_now->event.sign.name;
-                sign_new->type=event_now->event.sign.type;
+                sign_new->name=event_now->sign.name;
+                sign_new->type=event_now->sign.type;
                 sign_now=sign_new;
             }
             pak_sign.sign_num++;
         }
-        event_now=event_now->next;
+        member_now=member_now->next;
     }
 
     queue_add_sign(queue_send(),&pak_sign,0);

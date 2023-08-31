@@ -232,7 +232,7 @@ int core_sign_remove_all(core_id_t core_id){
     core->sign_list=NULL;
     return 1;
 }
-
+/*
 XLpak_signinfo *  core_get_sign(core_id_t core_id){
     if(core_id==CORE_MYSELF_ID){
         extern XLevent_list * event_list_head;
@@ -266,4 +266,4 @@ XLpak_signinfo *  core_get_sign(core_id_t core_id){
     //XLcore * core=core_get_by_id(core_id);
     //if(core==NULL)return NULL;
     //return core->sign_list;
-}
+}*/

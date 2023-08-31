@@ -149,18 +149,20 @@ int ins_send_to_event(XLpak_ins * ins){
         AC=1;
     }
     //模式是设备标识符
-    if(ins->receiver.mode==SIGN_NAME&&ins->receiver.name!=NULL){
-        extern XLevent_list * event_list_head;
-        XLevent_list * event_now=event_list_head;
-        while(event_now!=NULL){
-            if(event_now->event.sign.use==ENABLE&&event_now->event.sign.name!=NULL){
-                if(strcmp(ins->receiver.name,event_now->event.sign.name)==0){
-                    XLmonitor * monitor=monitor_get_by_id(event_now->event.mon_id);
-                    if(monitor!=NULL)
-                        queue_add_ins(&monitor->queue_head,ins,0);
+    extern XLll * event_ll;
+    if(ins->receiver.mode==SIGN_NAME&&ins->receiver.name!=NULL&&event_ll!=NULL){
+        printf("Icamdsad\n");
+        XLll_member * member_now=event_ll->head;
+        for(int i=0;i<event_ll->member_num;i++){
+            XLevent * event_now=(XLevent*)member_now->data;
+            if(event_now->sign.use==ENABLE&&event_now->sign.name!=NULL){
+                if(strcmp(ins->receiver.name,event_now->sign.name)==0){
+                    XLmonitor * monitor=monitor_get_by_id(event_now->mon_id);
+
+                    if(monitor!=NULL){int ids=queue_add_ins(&monitor->queue_head,ins,0);printf("Icamdsad:%d %d\n",ids,monitor->id);}
                 }
             }
-            event_now=event_now->next;
+            member_now=member_now->next;
         }
         return 1;
     }

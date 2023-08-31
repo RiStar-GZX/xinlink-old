@@ -103,8 +103,8 @@ INS * vnchost(XLevent_par * par){
     printf("vnchost start!\n");
     //execl("/bin/sh","sh","-c","x0vncserver -display :0 -passwordfile ~/.vnc/passwd",(char*)0);
     //system("x0vncserver -display :0 -passwordfile ~/.vnc/passwd");
-    popen("x0vncserver -display :0 -passwordfile ~/.vnc/passwd","r");
-    monitor_remove_member(par->mon_id);
+    //popen("x0vncserver -display :0 -passwordfile ~/.vnc/passwd","r");
+    /*monitor_remove_member(par->mon_id);
     while(1){
         XLpak_ins * pak_ins=monitor_get_member(par->mon_id);
         if(pak_ins==NULL){
@@ -126,7 +126,7 @@ INS * vnchost(XLevent_par * par){
             }
         }
         monitor_remove_member(par->mon_id);
-    }
+    }*/
     return NULL;
 }
 
@@ -246,12 +246,12 @@ int main(int argc, char *argv[])
     app_add("vnchost",vnchost);
 
     app_add("vncclient",vncclient);
-    //app_add("keyhost",keyborad_host);
-    //event_create_and_run("keyhost");
+    app_add("keyhost",keyborad_host);
     event_id_t host_id=event_create_and_run("vnchost");
     event_id_t client_id=event_create_and_run("vncclient");
     event_add_sign(host_id,"vnchost","vnc");
     event_add_sign(client_id,"vncclient","vnc");
+    event_show();
 
     XLpak_sign pak_sign;
     printf("Xinlink - version(0.0.1)\n");
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
             scanf("%d",&b);
             if(network_send_sign(b)>=0){
                 printf("Success!\n");
-                core_get_sign(b);
+                //core_get_sign(b);
             }
             else printf("Fail\n");
         }
@@ -412,7 +412,7 @@ int main(int argc, char *argv[])
             scanf("%d",&b);
             if(network_require_sign(b)>=0){
                 printf("Success!\n");
-                core_get_sign(b);
+                //core_get_sign(b);
             }
             else printf("Fail\n");
         }
@@ -453,3 +453,47 @@ int main(int argc ,char **argv){
     }
     return 0;
 }*/
+
+/*
+#include <ll.h>
+
+INS * test(XLevent_par * par){
+    return NULL;
+}
+int main(){
+
+    int num=0;
+    /*XLll * ll=ll_create(sizeof(XLnet));
+    ll_add_member_tail(ll,&num,sizeof(XLnet));
+    num=1;
+    ll_add_member_tail(ll,&num,sizeof(XLnet));
+    num=2;
+    ll_add_member_tail(ll,&num,sizeof(XLnet));
+    num=3;
+    ll_add_member_tail(ll,&num,sizeof(XLnet));
+
+    ll_del_member_tail(ll);
+    ll_del_member_tail(ll);
+    ll_del_member_tail(ll);
+
+    ll_del_member_head(ll);
+    ll_del_member_head(ll);
+    ll_del_member_head(ll);
+
+//    ll_del_member_head(ll);
+
+
+    //num=1;
+    ll_show_member(ll);
+    while(1){
+        int a;
+        scanf("%d",&a);
+        if(a==0)event_create(test);
+        else event_remove(a);
+        extern XLll *event_ll;
+        ll_show_member(event_ll);
+        event_show();
+    }
+    return 0;
+}
+*/
