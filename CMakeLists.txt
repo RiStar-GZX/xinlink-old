@@ -7,7 +7,7 @@ project(xinlink LANGUAGES C)
 include_directories(./include)
 include_directories(./src)
 
-set(SRC_LIST ./src/main.c ./src/core.c ./src/event.c ./src/instruction.c ./src/network.c )
+set(SRC_LIST ./src/main.c ./src/core.c ./src/event.c ./src/instruction.c ./src/network.c ./src/ll.c)
 
 add_executable(xinlink ${SRC_LIST})
 

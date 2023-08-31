@@ -106,7 +106,6 @@ typedef  struct XLins_decoded_data{
 }XLins_decoded_data;
 
 typedef  struct XLins_decoded{
-    //XLins_decoded_data * data_list;
     uint8_t ** argv;
     int argc;
 }XLins_decoded;
@@ -216,11 +215,6 @@ typedef struct XLcore {
     XLpak_signinfo * sign_list;
 }XLcore;
 
-typedef struct XLcore_list {
-    XLcore * core;
-    struct XLcore_list * next;
-}XLcore_list;
-
 //----------APP----------//
 
 
@@ -245,23 +239,6 @@ typedef struct XLapp{
     EVENT event;
 }XLapp;
 
-typedef struct XLapp_list{
-    XLapp * app;
-    struct XLapp_list * next;
-}XLapp_list;
-
-
-/*
-typedef struct XLevent_list{
-    //event_id_t id;
-    //EVENT event;
-    //XLqueue_head head;
-
-    XLevent event;
-    struct XLevent_list * next;
-}XLevent_list;
-*/
-
 typedef struct XLevent_thread_arg{
     XLqueue_head head;
     EVENT event;
@@ -277,13 +254,6 @@ typedef struct XLmonitor{
     XLsource receiver;
     XLqueue_head queue_head;
 }XLmonitor;
-
-typedef struct XLmonitor_list{
-    XLmonitor * monitor;
-    struct XLmonitor_list * next;
-}XLmonitor_list;
-
-
 
 
 #endif // TYPE_H

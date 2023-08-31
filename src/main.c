@@ -101,10 +101,8 @@ INS * mouse_client(XLevent_par * par){
 
 INS * vnchost(XLevent_par * par){
     printf("vnchost start!\n");
-    //execl("/bin/sh","sh","-c","x0vncserver -display :0 -passwordfile ~/.vnc/passwd",(char*)0);
-    //system("x0vncserver -display :0 -passwordfile ~/.vnc/passwd");
-    //popen("x0vncserver -display :0 -passwordfile ~/.vnc/passwd","r");
-    /*monitor_remove_member(par->mon_id);
+    popen("x0vncserver -display :0 -passwordfile ~/.vnc/passwd","r");
+    monitor_remove_member(par->mon_id);
     while(1){
         XLpak_ins * pak_ins=monitor_get_member(par->mon_id);
         if(pak_ins==NULL){
@@ -115,7 +113,7 @@ INS * vnchost(XLevent_par * par){
         //    return NULL;
         //}
         if(ins_get_par(pak_ins->ins,"connectwith")){
-            //printf(" connectwith source 192.168.1.15:8081:SN:vncclient");
+            //printf(" connectwith source 192.168.1.12:8081:SN:vncclient");
             printf("get ins\n");
             //system("neofetch");
             XLsource * receiver=ins_get_par_source(pak_ins->ins,"source");
@@ -126,11 +124,12 @@ INS * vnchost(XLevent_par * par){
             }
         }
         monitor_remove_member(par->mon_id);
-    }*/
+    }
     return NULL;
 }
 
 INS * vncclient(XLevent_par * par){
+    printf("vncclient start!\n");
     while(1)
     {
         XLpak_ins * pak_ins=monitor_get_member(par->mon_id);
@@ -243,12 +242,11 @@ INS * keyborad_host(XLevent_par * par){
 int main(int argc, char *argv[])
 {
     xinlink_init();
-    app_add("vnchost",vnchost);
+    printf("app:%d\n",app_add("vncclient",vncclient));
+    printf("app:%d\n",app_add("vnchost",vnchost));
 
-    app_add("vncclient",vncclient);
-    app_add("keyhost",keyborad_host);
-    event_id_t host_id=event_create_and_run("vnchost");
     event_id_t client_id=event_create_and_run("vncclient");
+    event_id_t host_id=event_create_and_run("vnchost");
     event_add_sign(host_id,"vnchost","vnc");
     event_add_sign(client_id,"vncclient","vnc");
     event_show();
@@ -264,7 +262,7 @@ int main(int argc, char *argv[])
             network_core_find_send();
         }
         else if(strcmp(a,"showcore")==0){
-            core_list();
+            core_show();
         }
         else if(strcmp(a,"connectcore")==0){
             int id;
@@ -393,7 +391,7 @@ int main(int argc, char *argv[])
             else printf("Fail!\n");
         }
         else if(strcmp(a,"showapp")==0){
-            app_list();
+            app_show();
         }
         else if(strcmp(a,"showevent")==0){
             event_show();

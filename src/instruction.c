@@ -2,7 +2,7 @@
 #include <network.h>
 #include <event.h>
 
-XLmonitor_list * monitor_head;
+XLll * monitor_ll;
 //----------------------------------------------//
 //              INS的编码与解码                   //
 //----------------------------------------------//
@@ -167,15 +167,18 @@ int ins_send_to_event(XLpak_ins * ins){
         return 1;
     }
     //添加指令到各个监视器中
-    extern XLmonitor_list * monitor_head;
-    XLmonitor_list * monitor_now=monitor_head;
-    while(monitor_now!=NULL&&monitor_now->monitor!=NULL)
+    extern XLll * monitor_ll;
+    if(monitor_ll==NULL)return -1;
+    XLll_member * member_now=monitor_ll->head;
+    //while(monitor_now!=NULL&&monitor_now->monitor!=NULL)
+    for(int i=0;i<monitor_ll->member_num;i++)
     {
+        XLmonitor * monitor_now=(XLmonitor*)member_now->data;
         int num=0;
         XLsource *source;
-        source=&monitor_now->monitor->receiver;
+        source=&monitor_now->receiver;
 
-        if(AC&&monitor_now->monitor->id==SA_mon_id)num++;   //启动应用的时候
+        if(AC&&monitor_now->id==SA_mon_id)num++;   //启动应用的时候
         else if(source->mode==ins->receiver.mode){
             if((source->mode==EVENT_ID||source->mode==ACCESS||source->mode==CORE_MYSELF||source->mode==CORE_OTHER)
                 &&source->id==ins->receiver.id)num++;
@@ -190,19 +193,18 @@ int ins_send_to_event(XLpak_ins * ins){
 
         //printf("send to event\n");
         if(num==1){
-            XLsource_list *list=monitor_now->monitor->list.source_list;
-            if(list==NULL)queue_add_ins(&monitor_now->monitor->queue_head,ins,0);
+            XLsource_list *list=monitor_now->list.source_list;
+            if(list==NULL)queue_add_ins(&monitor_now->queue_head,ins,0);
             while(list!=NULL){
                 if(source_cmp(&list->source,&ins->sender)){
                     printf("send to event\n");
-                    queue_add_ins(&monitor_now->monitor->queue_head,ins,0);
+                    queue_add_ins(&monitor_now->queue_head,ins,0);
                     break;
                 }
                 list=list->next;
             }
         }
-        if(monitor_now->next!=NULL)monitor_now=monitor_now->next;
-        else break;
+        member_now=member_now->next;
     }
 
     return 1;
@@ -210,118 +212,90 @@ int ins_send_to_event(XLpak_ins * ins){
 //----------------------------------------------//
 //            指令监视器的基本操作                 //
 //----------------------------------------------//
-mon_id_t monitor_create(XLsource * receive)
+mon_id_t monitor_create(XLsource * receiver)
 {
-    int mode=0;
-    extern XLmonitor_list * monitor_head;
+    if(receiver==NULL)return -1;
 
-    if(monitor_head==NULL){
-        monitor_head=(XLmonitor_list*)malloc(sizeof(XLmonitor_list));
-        monitor_head->monitor=(XLmonitor*)malloc(sizeof(XLmonitor));
-        monitor_head->monitor->id=1;
-        monitor_head->monitor->list.source_list=NULL;
-        monitor_head->monitor->receiver=*receive;
-        monitor_head->next=NULL;
-        return monitor_head->monitor->id;
+    extern XLll * monitor_ll;
+    if(monitor_ll==NULL)monitor_ll=ll_create(sizeof(XLmonitor));
+    XLmonitor monitor_new;
+    monitor_new.id=1;
+    monitor_new.list.source_list=NULL;
+    monitor_new.queue_head.queue=NULL;
+    monitor_new.receiver=*receiver;
+    //添加首个成员
+    if(monitor_ll->head==NULL){
+        ll_add_member_head(monitor_ll,&monitor_new,sizeof(XLmonitor));
+        return 1;
     }
-
-    XLmonitor_list * monitor_now=monitor_head,*monitor_front=NULL;
-    mon_id_t id=1;
-    while (1)
-    {
-        if(id==monitor_now->monitor->id)id++;
-        else if(id<monitor_now->monitor->id)
-        {
-            if(monitor_front==NULL)mode=1;
-            else mode=2;
-            break;
+    //添加成员
+    XLll_member * member_now=monitor_ll->head;
+    int mode=0,mem_front_id=-1;//-1代表位于首位
+    //获得新的成员的ID和要插入的位置
+    for(int i=0;i<monitor_ll->member_num;i++){
+        XLmonitor * monitor_now=(XLmonitor*)member_now->data;
+        if(mode==0&&monitor_new.id==monitor_now->id){
+            monitor_new.id++;
+            mem_front_id=i;
         }
-        else break;
-        if(monitor_now->next==NULL)break;
-        monitor_front=monitor_now;
-        monitor_now=monitor_now->next;
+        else if(mode==1&&monitor_new.id==monitor_now->id){
+            monitor_new.id++;
+            mem_front_id=i;
+            mode=0;
+        }
+        else if(mode==0)mode=1;
+
+        member_now=member_now->next;
     }
 
-    XLmonitor_list * monitor_new=(XLmonitor_list*)malloc(sizeof (XLmonitor_list));
-    monitor_new->monitor=(XLmonitor*)malloc(sizeof (XLmonitor));
-    monitor_new->monitor->id=id;
-    monitor_new->monitor->list.source_list=NULL;
-    monitor_new->monitor->receiver=*receive;
-    monitor_new->monitor->queue_head.queue=NULL;
+    if(mem_front_id==-1)ll_insert_member_front(monitor_ll,&monitor_new,sizeof(XLmonitor),0);
+    else ll_insert_member_next(monitor_ll,&monitor_new,sizeof(XLmonitor),mem_front_id);
+    return monitor_new.id;
 
-    if(mode==1)
-    {
-        monitor_new->next=monitor_head;
-        monitor_head=monitor_new;
-    }
-    else if(mode==2)
-    {
-        monitor_front->next=monitor_new;
-        monitor_new->next=monitor_now;
-    }
-    else
-    {
-        monitor_now->next=monitor_new;
-        monitor_new->next=NULL;
-    }
-    return id;
 }
 
-void monitor_list(void)
+void monitor_show(void)
 {
-    printf("monitor list:");
-    extern XLmonitor_list * monitor_head;
-    XLmonitor_list * monitor_now=monitor_head;
-    if(monitor_now==NULL)
+    printf("monitor list:\n");
+    extern XLll * monitor_ll;
+    if(monitor_ll==NULL)return;
+    XLll_member * member_now=monitor_ll->head;
+    if(member_now==NULL)return;
+    for(int i=0;i<monitor_ll->member_num;i++)
     {
-        printf("no monitor!\n");
-        return;
+        XLmonitor * monitor_now=(XLmonitor*)member_now->data;
+        printf("%d ",monitor_now->id);
+        member_now=member_now->next;
     }
-
-    while (1) {
-        printf("%d ",monitor_now->monitor->id);
-        if(monitor_now->next==NULL)break;
-        monitor_now=monitor_now->next;
-    }
-
     printf("\n");
 }
 
 int monitor_remove(mon_id_t id)
 {
-    extern XLmonitor_list * monitor_head;
-    XLmonitor_list * monitor_now=monitor_head,*monitor_front=monitor_now;
-    if(monitor_now==NULL)return -2;
-    while (1) {
-        if(id==monitor_now->monitor->id)
-        {
-            if(monitor_now==monitor_head)
-                monitor_head=monitor_now->next;
-            else
-                monitor_front->next=monitor_now->next;
-            free(monitor_now->monitor);
-            free(monitor_now);
+    extern XLll * monitor_ll;
+    if(monitor_ll==NULL)return -1;
+    XLll_member * member_now=monitor_ll->head;
+    for(int i=0;i<monitor_ll->member_num;i++){
+        XLmonitor * monitor_now=(XLmonitor*)member_now->data;
+        if(monitor_now->id==id){
+            XLmonitor * monitor=(XLmonitor*)ll_get_member(monitor_ll,i);
+            queue_remove_all(&monitor->queue_head);
+            ll_del_member(monitor_ll,i);
             return 1;
         }
-        if(monitor_now->next==NULL)break;
-        monitor_front=monitor_now;
-        monitor_now=monitor_now->next;
+        member_now=member_now->next;
     }
-    printf("no!\n");
-    return  -2;
+    return -1;
 }
 
-XLmonitor * monitor_get_by_id(mon_id_t monitor_id){
-    extern XLmonitor_list * monitor_head;
-    XLmonitor_list * list_now=monitor_head;
-    while(list_now!=NULL)
-    {
-        if(list_now->monitor!=NULL)
-        {
-            if(list_now->monitor->id==monitor_id)return list_now->monitor;
-        }
-        if(list_now->next==NULL)return NULL;
-        list_now=list_now->next;
+XLmonitor * monitor_get_by_id(mon_id_t id){
+    extern XLll * monitor_ll;
+    if(monitor_ll==NULL)return NULL;
+    XLll_member * member_now=monitor_ll->head;
+    for(int i=0;i<monitor_ll->member_num;i++){
+        XLmonitor * monitor_now=(XLmonitor*)member_now->data;
+        if(monitor_now->id==id)return monitor_now;
+        member_now=member_now->next;
     }
     return NULL;
 }
@@ -412,69 +386,6 @@ int ins_get_par_ip(INS * ins,char *name,IP * ip){
     *ip=inet_addr(str);
     return 1;
 }
-
-/*
-//192.168.0.100:666:EID:6
-int ins_get_par_source(INS *ins,char *name,XLsource * source){
-    char * par=ins_get_par_str(ins,name);
-    if(par==NULL)return -1;
-    char * str[4],*str_p,*par_p=par;
-    for(int i=0;i<4;i++)str[i]=(char*)malloc(strlen(ins)+1);
-    str_p=str[0];
-    int mode=1;
-    int j;
-    for( j=0;j<strlen(ins)+1;j++){
-        if(*str_p=='\0')
-        {
-            if(mode!=4)break;
-            else{
-                XLsource new_source;
-                new_source.net.ip=inet_addr(str[0]);
-                new_source.net.port=atoi(str[1]);
-
-                if(strcmp(str[2],"EID")==0){
-                    new_source.mode=EVENT_ID;
-                    new_source.id=atoi(str[3]);
-                }
-                else if(strcmp(str[2],"SN")==0){
-                    new_source.mode=SIGN_NAME;
-                    new_source.name=(char*)malloc(strlen(str[3])+1);
-                    strcpy(new_source.name,str[3]);
-                }
-                for(int i=0;i<4;i++)free(str[i]);
-                *source=new_source;
-                printf("SSSSSSSSSSSS\n");
-                return 1;
-            }
-        }
-        else if(*str_p==':'){
-            printf("here1\n");
-            *str_p='\0';
-            if(mode<4)mode++;
-            else break;
-            str_p=str[mode];
-        }
-        else{
-            printf("%d",j);
-            *str_p=*par_p;
-            str_p++;
-        }
-        par_p++;
-    }
-    for(int i=0;i<4;i++)free(str[i]);
-    printf("mode:%d j:%d\n",mode,j);
-    return -2;
-}
-
-char * ins_source_to_str(XLsource *source){
-    if(source==NULL)return NULL;
-    char str[40],mode[10];
-    if(source->mode==EVENT_ID)strcpy(mode,"EID");
-    else if(source->mode==SIGN_NAME)strcpy(mode,"SN");
-    sprintf(str,"%s:%d:%s:%d",inet_addr(source->net.ip),source->net.port,mode,source->id);
-    return str;
-}
-*/
 
 //192.168.1.16:8081:EID:11
 //192.168.1.16:8081:SIGN:test

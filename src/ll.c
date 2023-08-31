@@ -144,6 +144,18 @@ int ll_del_member(XLll * ll,uint member_num){
     return 1;
 }
 
+void * ll_get_member(XLll * ll,uint member_num){
+    if(ll==NULL||member_num<0||member_num>ll->member_num)return NULL;
+    if(ll->head==NULL||ll->tail==NULL)return NULL;
+
+    XLll_member * member_now=ll->head;
+    for(int i=0;i<member_num;i++){
+        return member_now->data;
+        member_now=member_now->next;
+    }
+    return NULL;
+}
+
 
 void ll_show_member(XLll *ll){
     if(ll==NULL)return;

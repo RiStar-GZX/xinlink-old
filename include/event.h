@@ -14,7 +14,7 @@
 #include <ll.h>
 
 int app_add(char * name,EVENT event);
-void app_list(void);
+void app_show(void);
 int app_remove(app_id_t id);
 int app_set(char * name,EVENT event);
 XLapp * app_get_by_id(app_id_t id);

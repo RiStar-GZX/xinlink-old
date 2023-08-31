@@ -10,6 +10,7 @@
 
 #include <type.h>
 #include <network.h>
+#include <ll.h>
 
 #define CORE_MYSELF_ID 1
 #define CORE_STATE_UNVERIFIED 0
@@ -19,7 +20,7 @@
 int core_init(void);
 int xinlink_init(void);
 int core_add(XLnet * net,char * name);
-void core_list(void);
+void core_show(void);
 int core_remove(core_id_t id);
 XLcore * core_get_by_id(core_id_t id);
 XLcore * core_get_by_net(XLnet * net);

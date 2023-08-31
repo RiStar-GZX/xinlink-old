@@ -78,7 +78,7 @@ char * data_get_str(uint8_t *data,int *p){
 XLnet network_get_local_info(void)
 {
     XLnet net_info;
-    net_info.ip=inet_addr("192.168.1.12");
+    net_info.ip=inet_addr("192.168.1.15");
     net_info.port=NETWORK_PORT;
     return net_info;
 }

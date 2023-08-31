@@ -11,10 +11,10 @@ INS * ins_encode(XLins_decoded * uncode_ins);
 XLins_decoded * ins_decode(INS * ins);
 int ins_send_to_event(XLpak_ins * ins);
 
-mon_id_t monitor_create(XLsource * receive);
-void monitor_list(void);
+mon_id_t monitor_create(XLsource * receiver);
+void monitor_show(void);
 int monitor_remove(mon_id_t id);
-XLmonitor * monitor_get_by_id(mon_id_t monitor_id);
+XLmonitor * monitor_get_by_id(mon_id_t id);
 XLpak_ins * monitor_get_member(mon_id_t monitor_id);
 INS * monitor_get_ins(mon_id_t monitor_id);
 int monitor_remove_member(mon_id_t monitor_id);

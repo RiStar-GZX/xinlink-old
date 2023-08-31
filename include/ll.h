@@ -42,4 +42,6 @@ int ll_del_member_tail(XLll * ll);
 
 void ll_show_member(XLll *ll);
 
+void * ll_get_member(XLll * ll,uint member_num);
+
 #endif // LL_H
